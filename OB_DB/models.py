@@ -12,11 +12,10 @@ class UserProfile(models.Model):
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
-        ('O', 'Other'),
     ]
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
-    email = models.EmailField(max_length=254, blank=True)
     birthday = models.DateField(blank=True, null=True)
+    email = models.EmailField(max_length=254, blank=True)    
     password = models.CharField(max_length=128, blank=True)
     profile_pic = models.ImageField(upload_to='profile_pics/', blank=True)
 
