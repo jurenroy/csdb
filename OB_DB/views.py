@@ -8,6 +8,11 @@ from .models import UserProfile, Chat
 from .serializers import UserProfileSerializer, ChatSerializer
 
 class UserProfileAPIView(APIView):
+    def get(self, request, format=None):
+        user_profiles = UserProfile.objects.all()
+        serializer = UserProfileSerializer(user_profiles, many=True)
+        return Response(serializer.data)
+
     def post(self, request, format=None):
         serializer = UserProfileSerializer(data=request.data)
         if serializer.is_valid():
@@ -17,6 +22,11 @@ class UserProfileAPIView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ChatAPIView(APIView):
+    def get(self, request, format=None):
+        chats = Chat.objects.all()
+        serializer = ChatSerializer(chats, many=True)
+        return Response(serializer.data)
+
     def post(self, request, format=None):
         serializer = ChatSerializer(data=request.data)
         if serializer.is_valid():
