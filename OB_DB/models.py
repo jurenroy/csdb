@@ -6,10 +6,10 @@ class UserProfile(models.Model):
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
     GENDER_CHOICES = [
-        ('M', 'Male'),
-        ('F', 'Female'),
+        ('Male', 'Male'),
+        ('Female', 'Female'),
     ]
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
+    gender = models.CharField(max_length=6, choices=GENDER_CHOICES, blank=True)
     birthday = models.DateField(blank=True, null=True)
     email = models.EmailField(max_length=254, blank=True)    
     password = models.CharField(max_length=128, blank=True)

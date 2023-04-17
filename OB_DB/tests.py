@@ -6,7 +6,7 @@ class UserProfileModelTest(TestCase):
         user_profile = UserProfile.objects.create(
             first_name="John",
             last_name="Doe",
-            gender="M",
+            gender="Male",
             birthday="1990-01-01",
             email="johndoe@example.com",
             password="somepassword",

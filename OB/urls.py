@@ -15,9 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path
+from OB_DB.views import UserProfileCreateView, home
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('userprofiles.urls')),
+    path('api/userprofile/', UserProfileCreateView.as_view(), name='userprofile-create'),
 ]
+
