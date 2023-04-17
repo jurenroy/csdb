@@ -1,36 +1,12 @@
 from django.shortcuts import render
+from django.views.generic import CreateView
+from django.urls import reverse_lazy
+from .models import UserProfile
 
-# Create your views here.
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import UserProfile, Chat
-from .serializers import UserProfileSerializer, ChatSerializer
+class UserProfileCreateView(CreateView):
+    model = UserProfile
+    fields = ['first_name', 'last_name', 'gender', 'birthday', 'email', 'password', 'profile_pic']
+    success_url = reverse_lazy('home')
 
-class UserProfileAPIView(APIView):
-    def get(self, request, format=None):
-        user_profiles = UserProfile.objects.all()
-        serializer = UserProfileSerializer(user_profiles, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = UserProfileSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class ChatAPIView(APIView):
-    def get(self, request, format=None):
-        chats = Chat.objects.all()
-        serializer = ChatSerializer(chats, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = ChatSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def home(request):
+    return render(request, 'home.html')
