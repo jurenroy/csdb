@@ -86,6 +86,7 @@ DATABASES = {
     }
 }
 
+DATE_FORMAT = '%m-%d-%Y'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -145,20 +146,19 @@ DJOSER = {
 
 }
 
-EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
-EMAIL_HOST_USER = 'e378071f27fb40'
-EMAIL_HOST_PASSWORD = '68c05790d5982a'
-EMAIL_PORT = '2525'
-
+# EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+# EMAIL_HOST_USER = 'a4d6101781f5c2'
+# EMAIL_HOST_PASSWORD = 'eaa4ec48db8e3d'
+# EMAIL_PORT = '2525'
 
 BASE_URL = 'http://localhost:3000/'
 
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'bohariambulo17@gmail.com'
-# EMAIL_HOST_PASSWORD = 'uezhaoyrhxjxodjv'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'baddergenius@gmail.com'
+EMAIL_HOST_PASSWORD = 'vcvxovrfcdlsofoz'
 
 
 AUTH_USER_MODEL = "accounts.User"

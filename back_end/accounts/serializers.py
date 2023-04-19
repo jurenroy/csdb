@@ -6,19 +6,15 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 
 
-
 class CustomUserSerializer(serializers.ModelSerializer):
+
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
     password = serializers.CharField(
         style={"input_type": "password"}, write_only=True)
-    GENDER_CHOICES = [
-        ('Male', 'Male'),
-        ('Female', 'Female'),
-    ]
-    gender = serializers.ChoiceField(choices=GENDER_CHOICES)
-    birthday = serializers.DateField(write_only=True, input_formats=['%Y/%m/%d'])
 
+    gender = serializers.CharField(write_only=True)
+    birthday = serializers.DateField(write_only=True)
 
     class Meta:
         model = User
@@ -44,5 +40,3 @@ class CustomUserSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
-
-
