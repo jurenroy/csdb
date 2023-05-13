@@ -17,11 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
+from accounts.views import  UserListView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('api.urls')),
-     path('activation/<uidb64>/<token>/',
+    path('activation/<uidb64>/<token>/',
          activate_account, name='activate_account'),
+    path('users/', UserListView.as_view(), name='user-list'),
 
 ]
