@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
-from accounts.views import  UserListView, update_profile_picture
+from accounts.views import  UserListView, update_profile, profile_updated
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,6 +25,7 @@ urlpatterns = [
     path('activation/<uidb64>/<token>/',
          activate_account, name='activate_account'),
     path('users/', UserListView.as_view(), name='user-list'),
-    path('update-profile-picture/<str:username>/', update_profile_picture, name='update_profile_picture'),
+    path('update-profile/<str:username>/', update_profile, name='update_profile'),
+    path('profile-updated/', profile_updated, name='profile_updated'),    
 
 ]
