@@ -1,0 +1,6 @@
+<!-- update_profile_picture.html -->
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="profile_pic">
+    <button type="submit">Save Changes</button>
+</form>
