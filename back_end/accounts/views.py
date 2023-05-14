@@ -17,6 +17,7 @@ class UserListView(View):
                 "last_name": user.last_name,
                 "gender": user.gender,
                 "birthday": user.birthday,
+                "profile_pic": user.profile_pic.url if user.profile_pic else None,
             }
             for user in users
         ]

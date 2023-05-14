@@ -10,21 +10,23 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
-    password = serializers.CharField(
-        style={"input_type": "password"}, write_only=True)
-
+    password = serializers.CharField(style={"input_type": "password"}, write_only=True)
     gender = serializers.CharField(write_only=True)
     birthday = serializers.DateField(write_only=True)
+    profile_pic = serializers.ImageField(allow_empty_file=True, required=False)
+
 
     class Meta:
         model = User
         fields = ['username', 'email', 'first_name', 'last_name', 'password',
-                  'gender', 'birthday']
+                  'gender', 'birthday', 'profile_pic']
         extra_kwargs = {
             'password': {'write_only': True}
         }
 
     def save(self, **kwargs):
+        profile_pic = self.validated_data.pop('profile_pic', None)
+
         user = User.objects.create_user(
             username=self.validated_data['username'],
             email=self.validated_data['email'],
@@ -33,8 +35,10 @@ class CustomUserSerializer(serializers.ModelSerializer):
             password=self.validated_data['password'],
             gender=self.validated_data['gender'],
             birthday=self.validated_data['birthday'],
-
         )
+
+        if profile_pic:
+            user.profile_pic = profile_pic
 
         user.is_active = False
         user.save()

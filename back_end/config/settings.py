@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 import os
+import cloudinary_storage
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,7 +41,10 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'djoser',
     'corsheaders',
-    'accounts'
+    'accounts',
+    'cloudinary_storage',
+    'cloudinary',
+    
 ]
 
 MIDDLEWARE = [
@@ -159,6 +163,19 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'baddergenius@gmail.com'
 EMAIL_HOST_PASSWORD = 'ienzvgkclacfvtvv'
+
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dzoua2hen',
+    'API_KEY': '966662313698273',
+    'API_SECRET': 'TRrExn4gKdXbvSEeMWdPBVImltY',
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Media files (user-uploaded files)
+MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
 
 
 AUTH_USER_MODEL = "accounts.User"
