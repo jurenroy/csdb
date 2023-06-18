@@ -42,9 +42,6 @@ INSTALLED_APPS = [
     'djoser',
     'corsheaders',
     'accounts',
-    'cloudinary_storage',
-    'cloudinary',
-    
 ]
 
 MIDDLEWARE = [
@@ -126,7 +123,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -163,15 +160,6 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'baddergenius@gmail.com'
 EMAIL_HOST_PASSWORD = 'ienzvgkclacfvtvv'
-
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dzoua2hen',
-    'API_KEY': '966662313698273',
-    'API_SECRET': 'TRrExn4gKdXbvSEeMWdPBVImltY',
-}
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Media files (user-uploaded files)
 MEDIA_ROOT = BASE_DIR / 'media'

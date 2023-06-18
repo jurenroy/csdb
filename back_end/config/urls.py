@@ -18,6 +18,9 @@ from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
 from accounts.views import  UserListView, update_profile, profile_updated
+from django.conf import settings
+from django.conf.urls.static import static
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,6 +29,6 @@ urlpatterns = [
          activate_account, name='activate_account'),
     path('users/', UserListView.as_view(), name='user-list'),
     path('update-profile/<str:username>/', update_profile, name='update_profile'),
-    path('profile-updated/', profile_updated, name='profile_updated'),    
+    path('profile-updated/', profile_updated, name='profile_updated'),
 
-]
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

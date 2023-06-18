@@ -1,14 +1,8 @@
 from django.shortcuts import get_object_or_404, render, redirect
-
-# Create your views here.
-from django.http import JsonResponse
-from django.contrib.auth import get_user_model
-from django.http import HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from .models import User
-
-User = get_user_model()
 
 class UserListView(View):
     def get(self, request):
@@ -37,7 +31,7 @@ def update_profile(request, username):
         if new_profile_pic:
             user.profile_pic = new_profile_pic
             user.save()
-            return HttpResponseRedirect('/profile-updated/')  # Redirect to a success page or the updated profile page
+            return redirect('profile_updated')
 
     return render(request, 'update_profile.html', {'user': user})
 
