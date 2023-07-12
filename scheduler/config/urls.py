@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
 from accounts.views import  UserListView, update_profile, profile_updated
+from scheduling.views import add_course, course_list, delete_course, update_course, get_course_json
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -30,5 +31,10 @@ urlpatterns = [
     path('users/', UserListView.as_view(), name='user-list'),
     path('update-profile/<str:username>/', update_profile, name='update_profile'),
     path('profile-updated/', profile_updated, name='profile_updated'),
+    path('add_course/', add_course, name='add_course'),
+    path('course_list/', course_list, name='course_list'),
+    path('delete_course/<int:course_id>/', delete_course, name='delete_course'),
+    path('update_course/<int:course_id>/', update_course, name='update_course'),
+    path('get_course_json/', get_course_json, name='get_course_json'),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
