@@ -1,9 +1,11 @@
 <!-- add_course.html -->
-<form method="POST" action="{% url 'add_course' %}">
-    {% csrf_token %}
-    <label for="coursename">Course Name:</label>
-    <input type="text" name="coursename" required><br>
-    <label for="abbreviation">Abbreviation:</label>
-    <input type="text" name="abbreviation" required><br>
-    <input type="submit" value="Add Course">
-  </form>
+<form method="post">
+  {% csrf_token %}
+  <label for="coursename">Course Name:</label>
+  <input type="text" id="coursename" name="coursename" required>
+  
+  <label for="abbreviation">Abbreviation:</label>
+  <input type="text" id="abbreviation" name="abbreviation" required>
+  
+  <button type="submit">Add Course</button>
+</form>

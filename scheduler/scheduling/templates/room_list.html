@@ -1,0 +1,6 @@
+<!-- room_list.html -->
+{% for room in rooms %}
+  <p>{{ room.building_number }} - {{ room.roomname }}</p>
+{% empty %}
+  <p>No rooms found.</p>
+{% endfor %}

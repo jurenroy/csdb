@@ -9,7 +9,8 @@ class Course(models.Model):
         return self.coursename
 
 class Room(models.Model):
-    name = models.CharField(max_length=100)
+    roomname = models.CharField(max_length=100, blank=True)
+    building_number = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
-        return self.name
+        return self.roomname

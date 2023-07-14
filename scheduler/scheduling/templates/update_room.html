@@ -1,16 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Update Room</title>
-</head>
-<body>
-    <h1>Update Room</h1>
-    <form method="POST" action="{% url 'update_room' room.id %}">
-        {% csrf_token %}
-        <label for="room_name">Room Name:</label>
-        <input type="text" id="room_name" name="name" value="{{ room.name }}" required>
-        <br><br>
-        <input type="submit" value="Update Room">
-    </form>
-</body>
-</html>
+<!-- update_room.html -->
+<form method="post">
+    {% csrf_token %}
+    <label for="roomname">Room Name:</label>
+    <input type="text" id="roomname" name="roomname" value="{{ room.roomname }}" required>
+    
+    <label for="building_number">Building Number:</label>
+    <input type="text" id="building_number" name="building_number" value="{{ room.building_number }}" required>
+    
+    <button type="submit">Update Room</button>
+  </form>
+  
