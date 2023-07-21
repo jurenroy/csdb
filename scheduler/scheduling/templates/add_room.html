@@ -1,12 +1,8 @@
-<!-- add_room.html -->
-<form method="post">
+<h1>Add Room</h1>
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    <label for="roomname">Room Name:</label>
-    <input type="text" id="roomname" name="roomname" required>
-    
-    <label for="building_number">Building Number:</label>
-    <input type="text" id="building_number" name="building_number" required>
-    
+    <input type="text" name="roomname" placeholder="Room Name" required>
+    <input type="text" name="building_number" placeholder="Building Number" required>
+    <input type="text" name="roomtype" placeholder="Room Type" required>
     <button type="submit">Add Room</button>
-  </form>
-  
+</form>

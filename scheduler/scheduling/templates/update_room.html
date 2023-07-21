@@ -1,12 +1,8 @@
-<!-- update_room.html -->
-<form method="post">
+<h1>Update Room</h1>
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    <label for="roomname">Room Name:</label>
-    <input type="text" id="roomname" name="roomname" value="{{ room.roomname }}" required>
-    
-    <label for="building_number">Building Number:</label>
-    <input type="text" id="building_number" name="building_number" value="{{ room.building_number }}" required>
-    
+    <input type="text" name="roomname" value="{{ room.roomname }}" required>
+    <input type="text" name="building_number" value="{{ room.building_number }}" required>
+    <input type="text" name="roomtype" value="{{ room.roomtype }}" required>
     <button type="submit">Update Room</button>
-  </form>
-  
+</form>

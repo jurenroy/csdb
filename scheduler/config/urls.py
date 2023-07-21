@@ -32,12 +32,12 @@ urlpatterns = [
     path('update-profile/<str:username>/', update_profile, name='update_profile'),
     path('profile-updated/', profile_updated, name='profile_updated'),
     path('add_course/', add_course, name='add_course'),
-    path('delete_course/<int:course_id>/', delete_course, name='delete_course'),
-    path('update_course/<int:course_id>/', update_course, name='update_course'),
+    path('delete_course/<str:abbreviation>/', delete_course, name='delete_course'),
+    path('update_course/<str:abbreviation>/', update_course, name='update_course'),
     path('get_course_json/', get_course_json, name='get_course_json'),
-    path('add_room/', add_room, name='add_room'),
-    path('delete_room/<int:room_id>/', delete_room, name='delete_room'),
-    path('update_room/<int:room_id>/', update_room, name='update_room'),
+    path('add_room/<str:abbreviation>/', add_room, name='add_room'),
+    path('delete_room/<str:abbreviation>/<str:roomname>/', delete_room, name='delete_room'),
+    path('update_room/<str:abbreviation>/<str:roomname>/', update_room, name='update_room'),
     path('get_room_json/', get_room_json, name='get_room_json'),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
