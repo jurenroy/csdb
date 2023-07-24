@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete Selected Rooms</title>
+</head>
+<body>
+    <h1>Delete Selected Rooms</h1>
+    <p>Room Type: {{ roomtype }}</p>
+    <form method="post">
+        {% csrf_token %}
+        {% for room in rooms %}
+            <div>
+                <input type="checkbox" name="room_ids" value="{{ room.roomID }}">
+                <label>{{ room.roomname }} - {{ room.building_number }}</label>
+            </div>
+        {% endfor %}
+        <button type="submit">Delete Selected Rooms</button>
+    </form>
+</body>
+</html>

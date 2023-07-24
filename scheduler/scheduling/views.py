@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Course, Room
+from .models import Course, Room, Subject, Section
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 
@@ -32,25 +32,29 @@ def update_course(request, abbreviation):
 
     if request.method == 'POST':
         coursename = request.POST.get('coursename')
-        new_abbreviation = request.POST.get('abbreviation')
+        new_abbreviation = request.POST.get('new_abbreviation')
 
         if coursename and new_abbreviation:
-            # Remove the course field from the Room model temporarily
-            with transaction.atomic():
-                Room.objects.filter(course=course).update(course=None)
+            try:
+                # Start a transaction to ensure atomicity
+                with transaction.atomic():
+                    # Update the course fields
+                    course.coursename = coursename
+                    course.abbreviation = new_abbreviation
+                    course.save()
 
-                course.coursename = coursename
-                course.abbreviation = new_abbreviation
-                course.save()
+                    # Update the affected models (e.g., Section, Room, etc.)
+                    Section.objects.filter(course__abbreviation=abbreviation).update(course=course)
+                    # Update other affected models as needed
 
-                # Reassign the rooms to the updated course
-                Room.objects.filter(course__isnull=True).update(course=course)
-
-            return JsonResponse({'message': 'Course updated successfully'})
+                return JsonResponse({'message': 'Course and affected models updated successfully'})
+            except Exception as e:
+                return JsonResponse({'message': str(e)}, status=500)
         else:
-            return render(request, 'update_course.html', {'course': course, 'message': 'Invalid course data'})
+            return JsonResponse({'message': 'Invalid course data'}, status=400)
     else:
         return render(request, 'update_course.html', {'course': course})
+
 
 @csrf_exempt
 def course_list(request):
@@ -118,3 +122,131 @@ def get_room_json(request):
     rooms = Room.objects.all()
     room_data = [{'roomID': room.id, 'roomname': room.roomname, 'building_number': room.building_number, 'roomtype': room.roomtype, 'course': room.course.abbreviation if room.course else None} for room in rooms]
     return JsonResponse(room_data, safe=False)
+
+
+#Subject View
+
+@csrf_exempt
+def add_subject(request, abbreviation):
+    if request.method == 'POST':
+        year = request.POST.get('year')
+        subjectcode = request.POST.get('subjectcode')
+        subjectname = request.POST.get('subjectname')
+
+        if year and subjectcode and subjectname:
+            course = get_object_or_404(Course, abbreviation=abbreviation)
+            subject = Subject(course=course, year=year, subjectcode=subjectcode, subjectname=subjectname)
+            subject.save()
+            return JsonResponse({'message': 'Subject added successfully'})
+        else:
+            return render(request, 'add_subject.html', {'message': 'Invalid subject data'})
+    else:
+        return render(request, 'add_subject.html')
+
+@csrf_exempt
+def update_subject(request, abbreviation, subjectcode):
+    subject = get_object_or_404(Subject, course__abbreviation=abbreviation, subjectcode=subjectcode)
+
+    if request.method == 'POST':
+        year = request.POST.get('year')
+        subjectcode = request.POST.get('subjectcode')  # Updated subject code
+        subjectname = request.POST.get('subjectname')
+
+        if year and subjectcode and subjectname:
+            subject.year = year
+            subject.subjectcode = subjectcode  # Update the subject code
+            subject.subjectname = subjectname
+            subject.save()
+            return JsonResponse({'message': 'Subject updated successfully'})
+        else:
+            return JsonResponse({'message': 'Invalid subject data'})
+    else:
+        return render(request, 'update_subject.html', {'subject': subject})
+
+@csrf_exempt
+def delete_subject(request, abbreviation, subjectcode):
+    subject = get_object_or_404(Subject, course__abbreviation=abbreviation, subjectcode=subjectcode)
+    subject.delete()
+    return JsonResponse({'message': 'Subject deleted successfully'})
+
+@csrf_exempt
+def get_subject_json(request):
+    subjects = Subject.objects.all()
+    subject_data = [{'subjectcode': subject.subjectcode, 'subjectname': subject.subjectname, 'year': subject.year, 'course': subject.course.abbreviation if subject.course else None} for subject in subjects]
+    return JsonResponse(subject_data, safe=False)
+
+#Section View
+
+@csrf_exempt
+def add_section(request, course, year):
+    if request.method == 'POST':
+        # Get the last section number for the given course and year
+        last_section = Section.objects.filter(course__abbreviation=course, year=year).order_by('-sectionnumber').first()
+        if last_section:
+            section_number = int(last_section.sectionnumber) + 1
+        else:
+            # If no section exists, create the first section with number 1
+            section_number = 1
+
+        # Create the new section
+        course_obj = get_object_or_404(Course, abbreviation=course)
+        section = Section(course=course_obj, year=year, sectionnumber=section_number)
+        section.save()
+
+        return JsonResponse({'message': 'Section added successfully'})
+    else:
+        return JsonResponse({'message': 'Invalid request method'})
+    
+@csrf_exempt
+def delete_section(request, course, year):
+    if request.method == 'DELETE':
+        # Get the section with the highest section number for the given course and year
+        try:
+            section = Section.objects.filter(course__abbreviation=course, year=year).order_by('-sectionnumber').first()
+            if section:
+                if section.sectionnumber == '1':
+                    return JsonResponse({'message': 'There is 1 section. Cannot delete the default section.'})
+                else:
+                    section.delete()
+                    return JsonResponse({'message': 'Section deleted successfully'})
+            else:
+                return JsonResponse({'message': 'No section found for the given course and year'})
+        except Exception as e:
+            return JsonResponse({'message': 'Error deleting section'})
+    else:
+        return JsonResponse({'message': 'Invalid request method'})
+
+
+def get_section_json(request):
+    sections = Section.objects.all()
+    data = [
+        {
+            'course': section.course.abbreviation,
+            'year': section.year,
+            'sectionnumber': section.sectionnumber,
+        }
+        for section in sections
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def delete_selected_rooms(request, abbreviation, roomtype):
+    rooms = Room.objects.filter(course__abbreviation=abbreviation, roomtype=roomtype)
+    if request.method == 'POST':
+        selected_room_ids = request.POST.getlist('room_ids')
+        for room_id in selected_room_ids:
+            room = get_object_or_404(Room, id=room_id)
+            room.delete()
+        return JsonResponse({'message': f'Selected {roomtype} rooms deleted successfully'})
+    else:
+        return render(request, 'delete_selected_rooms.html', {'rooms': rooms, 'roomtype': roomtype})
+
+@csrf_exempt
+def delete_all_rooms(request, abbreviation, roomtype):
+    rooms = Room.objects.filter(course__abbreviation=abbreviation, roomtype=roomtype)
+    if request.method == 'POST':
+        rooms.delete()
+        return JsonResponse({'message': f'All {roomtype} rooms deleted successfully'})
+    else:
+        return render(request, 'delete_all_rooms.html', {'rooms': rooms, 'roomtype': roomtype})

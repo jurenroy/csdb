@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete All Rooms</title>
+</head>
+<body>
+    <h1>Delete All Rooms</h1>
+    <p>Room Type: {{ roomtype }}</p>
+    <form method="post">
+        {% csrf_token %}
+        {% for room in rooms %}
+            <div>
+                <label>{{ room.roomname }} - {{ room.building_number }}</label>
+            </div>
+        {% endfor %}
+        <button type="submit">Delete All {{ roomtype }} Rooms</button>
+    </form>
+</body>
+</html>
