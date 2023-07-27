@@ -11,8 +11,9 @@ def add_course(request):
     if request.method == 'POST':
         coursename = request.POST.get('coursename')
         abbreviation = request.POST.get('abbreviation')
-        if coursename and abbreviation:
-            course = Course(coursename=coursename, abbreviation=abbreviation)
+        college = request.POST.get('college')  # Add the college field to the form or fetch it from the user session
+        if coursename and abbreviation and college:
+            course = Course(coursename=coursename, abbreviation=abbreviation, college=college)
             course.save()
             return JsonResponse({'message': 'Course added successfully'})
         else:
@@ -33,14 +34,16 @@ def update_course(request, abbreviation):
     if request.method == 'POST':
         coursename = request.POST.get('coursename')
         new_abbreviation = request.POST.get('new_abbreviation')
+        college = request.POST.get('college')  # Add the college field to the form or fetch it from the user session
 
-        if coursename and new_abbreviation:
+        if coursename and new_abbreviation and college:
             try:
                 # Start a transaction to ensure atomicity
                 with transaction.atomic():
                     # Update the course fields
                     course.coursename = coursename
                     course.abbreviation = new_abbreviation
+                    course.college = college
                     course.save()
 
                     # Update the affected models (e.g., Section, Room, etc.)
@@ -64,9 +67,8 @@ def course_list(request):
 @csrf_exempt
 def get_course_json(request):
     courses = Course.objects.all()
-    course_data = [{'courseID': course.id, 'coursename': course.coursename, 'abbreviation': course.abbreviation} for course in courses]
+    course_data = [{'courseID': course.id, 'coursename': course.coursename, 'abbreviation': course.abbreviation, 'college': course.college} for course in courses]
     return JsonResponse(course_data, safe=False)
-
 
 
 # Room Views

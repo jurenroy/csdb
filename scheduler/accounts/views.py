@@ -15,7 +15,8 @@ class UserListView(View):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "profile_pic": user.profile_pic.url if user.profile_pic else None,
-                "isAdmin": user.isAdmin
+                "isAdmin": user.isAdmin,
+                "college": user.college,
             }
             for user in users
         ]

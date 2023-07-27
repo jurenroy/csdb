@@ -6,6 +6,10 @@
   
   <label for="new_abbreviation">New Abbreviation:</label>
   <input type="text" id="new_abbreviation" name="new_abbreviation" value="{{ course.abbreviation }}" required>
+
+  <!-- Add the college field -->
+  <label for="college">College:</label>
+  <input type="text" id="college" name="college" value="{{ course.college }}" required>
   
   <button type="submit">Update Course</button>
 </form>
