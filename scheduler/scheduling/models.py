@@ -56,3 +56,12 @@ def create_first_section_for_course(sender, instance, created, **kwargs):
         for year in year_levels:
             section = Section(course=instance, year=year, sectionnumber=1)
             section.save()
+
+class TimeSlot(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, to_field='abbreviation')
+    timeslottype = models.CharField(max_length=50)
+    starttime = models.TimeField()
+    endtime = models.TimeField()
+
+    def __str__(self):
+        return f"{self.course} - {self.timeslottype} - {self.starttime} to {self.endtime}"
