@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import post_save, pre_delete, pre_save
 from django.dispatch import receiver
 
 # Create your models here.
@@ -210,46 +210,85 @@ def delete_related_room_slots(sender, instance, **kwargs):
         room_slot.roomslotnumber = index
         room_slot.save()
 
-def update_related_room_slots(course, roomtype, starttime=None, endtime=None, roomname=None, building_number=None):
-    print("Updating related room slots...")
 
-    with transaction.atomic():
-        if starttime is not None and endtime is not None:
-            RoomSlot.objects.filter(
-                course=course,
-                roomslottype=roomtype,
-                starttime=starttime,
-                endtime=endtime,
-            ).update(
-                starttime=starttime,
-                endtime=endtime,
+@receiver(pre_save, sender=Room)
+def update_related_room_slots_for_room(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            old_instance = Room.objects.get(pk=instance.pk)
+        except Room.DoesNotExist:
+            return  # Ignore if the old instance doesn't exist
+
+        # Check for changes in relevant fields
+        if (
+            old_instance.course != instance.course or
+            old_instance.roomtype != instance.roomtype or
+            old_instance.building_number != instance.building_number or
+            old_instance.roomname != instance.roomname
+        ):
+            # Find all related RoomSlot instances based on old values
+            related_room_slots = RoomSlot.objects.filter(
+                course=old_instance.course,
+                roomslottype=old_instance.roomtype,
+                building_number=old_instance.building_number,
+                roomname=old_instance.roomname,
             )
-        elif roomname is not None and building_number is not None:
-            RoomSlot.objects.filter(
-                course=course,
-                roomslottype=roomtype,
-            ).update(
-                roomname=roomname,
-                building_number=building_number,
+
+            # Update the matched RoomSlot instances with the new values
+            for room_slot in related_room_slots:
+                room_slot.course = instance.course
+                room_slot.roomslottype = instance.roomtype
+                room_slot.building_number = instance.building_number
+                room_slot.roomname = instance.roomname
+                room_slot.save()
+
+            # Delete non-matched RoomSlot instances
+            non_matched_room_slots = RoomSlot.objects.filter(
+                course=old_instance.course,
+                roomslottype=old_instance.roomtype,
+                building_number=old_instance.building_number,
+                roomname=old_instance.roomname,
+            ).exclude(pk__in=related_room_slots)
+            non_matched_room_slots.delete()
+
+# ...
+
+@receiver(pre_save, sender=TimeSlot)
+def update_related_room_slots_for_timeslot(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            old_instance = TimeSlot.objects.get(pk=instance.pk)
+        except TimeSlot.DoesNotExist:
+            return  # Ignore if the old instance doesn't exist
+
+        # Check for changes in relevant fields
+        if (
+            old_instance.course != instance.course or
+            old_instance.timeslottype != instance.timeslottype or
+            old_instance.starttime != instance.starttime or
+            old_instance.endtime != instance.endtime
+        ):
+            # Find all related RoomSlot instances based on old values
+            related_room_slots = RoomSlot.objects.filter(
+                course=old_instance.course,
+                roomslottype=old_instance.timeslottype,
+                starttime=old_instance.starttime,
+                endtime=old_instance.endtime,
             )
 
-@receiver(post_save, sender=TimeSlot)
-def update_timeslot_related_room_slots(sender, instance, created, **kwargs):
-    update_related_room_slots(
-        course=instance.course,
-        roomtype=instance.timeslottype,
-        starttime=instance.starttime,
-        endtime=instance.endtime,
-    )
+            # Update the matched RoomSlot instances with the new values
+            for room_slot in related_room_slots:
+                room_slot.course = instance.course
+                room_slot.roomslottype = instance.timeslottype
+                room_slot.starttime = instance.starttime
+                room_slot.endtime = instance.endtime
+                room_slot.save()
 
-@receiver(post_save, sender=Room)
-def update_room_related_room_slots(sender, instance, created, **kwargs):
-    update_related_room_slots(
-        course=instance.course,
-        roomtype=instance.roomtype,
-        roomname=instance.roomname,
-        building_number=instance.building_number,
-    )
-
-
-
+            # Delete non-matched RoomSlot instances
+            non_matched_room_slots = RoomSlot.objects.filter(
+                course=old_instance.course,
+                roomslottype=old_instance.timeslottype,
+                starttime=old_instance.starttime,
+                endtime=old_instance.endtime,
+            ).exclude(pk__in=related_room_slots)
+            non_matched_room_slots.delete()
