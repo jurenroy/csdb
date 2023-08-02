@@ -252,3 +252,4 @@ def delete_all_rooms(request, abbreviation, roomtype):
         return JsonResponse({'message': f'All {roomtype} rooms deleted successfully'})
     else:
         return render(request, 'delete_all_rooms.html', {'rooms': rooms, 'roomtype': roomtype})
+    
