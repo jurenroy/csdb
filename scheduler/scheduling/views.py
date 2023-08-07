@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Course, Room, Subject, Section
+from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 
@@ -253,3 +253,74 @@ def delete_all_rooms(request, abbreviation, roomtype):
     else:
         return render(request, 'delete_all_rooms.html', {'rooms': rooms, 'roomtype': roomtype})
     
+#Timeslot Views
+@csrf_exempt
+def add_timeslot(request, abbreviation):
+    if request.method == 'POST':
+        starttime = request.POST.get('starttime')
+        endtime = request.POST.get('endtime')
+        timeslottype = request.POST.get('timeslottype')  # New field for timeslot type
+        if starttime and endtime and timeslottype:
+            course = get_object_or_404(Course, abbreviation=abbreviation)
+            timeslot = TimeSlot(starttime=starttime, endtime=endtime, timeslottype=timeslottype, course=course)
+            timeslot.save()
+            return JsonResponse({'message': 'Timeslot added successfully'})
+        else:
+            return render(request, 'add_timeslot.html', {'message': 'Invalid timeslot data'})
+    else:
+        return render(request, 'add_timeslot.html')
+
+@csrf_exempt
+def delete_timeslot(request, abbreviation, starttime, endtime):
+    timeslot = get_object_or_404(TimeSlot, course__abbreviation=abbreviation, starttime=starttime, endtime=endtime)
+    timeslot.delete()
+    return JsonResponse({'message': 'Timeslot deleted successfully'})
+
+@csrf_exempt
+def update_timeslot(request, abbreviation, starttime, endtime):
+    timeslot = get_object_or_404(TimeSlot, course__abbreviation=abbreviation, starttime=starttime, endtime=endtime)
+
+    if request.method == 'POST':
+        starttime = request.POST.get('starttime')
+        endtime = request.POST.get('endtime')
+        timeslottype = request.POST.get('timeslottype')  # New field for room type
+        if starttime and endtime and timeslottype:
+            timeslot.starttime = starttime
+            timeslot.endtime = endtime
+            timeslot.timeslottype = timeslottype
+            timeslot.save()
+            return JsonResponse({'message': 'Timeslot updated successfully'})
+        else:
+            return render(request, 'update_timeslot.html', {'timeslot': timeslot, 'message': 'Invalid timeslot data'})
+    else:
+        return render(request, 'update_timeslot.html', {'timeslot': timeslot})
+
+@csrf_exempt
+def timeslot_list(request):
+    timeslot = TimeSlot.objects.all()
+    return render(request, 'timeslot_list.html', {'rooms': timeslot})
+
+@csrf_exempt
+def get_timeslot_json(request):
+    timeslots = TimeSlot.objects.all()
+    timeslot_data = [{'timeslotID': timeslot.id, 'starttime': timeslot.starttime, 'endtime': timeslot.endtime, 'timeslottype': timeslot.timeslottype, 'course': timeslot.course.abbreviation if timeslot.course else None} for timeslot in timeslots]
+    return JsonResponse(timeslot_data, safe=False)
+
+def get_roomslot_json(request):
+    roomslots = RoomSlot.objects.all()
+    roomslot_data = [
+        {
+            'roomslotID': roomslot.id,
+            'roomslottype': roomslot.roomslottype,
+            'day': roomslot.day,
+            'roomname': roomslot.roomname,            
+            'building_number': roomslot.building_number,
+            'starttime': roomslot.starttime,
+            'endtime': roomslot.endtime,
+            'roomslotnumber': roomslot.roomslotnumber,
+            'availability': roomslot.availability,
+            'course': roomslot.course.abbreviation if roomslot.course else None
+        }
+        for roomslot in roomslots
+    ]
+    return JsonResponse(roomslot_data, safe=False)

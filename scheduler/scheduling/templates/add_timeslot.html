@@ -1,0 +1,8 @@
+<h1>Add Timeslot</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="text" name="starttime" placeholder="starttime" required>
+    <input type="text" name="endtime" placeholder="endtime" required>
+    <input type="text" name="timeslottype" placeholder="timeslottype" required>
+    <button type="submit">Add Timeslot</button>
+</form>

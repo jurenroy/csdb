@@ -64,7 +64,7 @@ class TimeSlot(models.Model):
     endtime = models.TimeField()
 
     def __str__(self):
-        return f"{self.course} - {self.timeslottype} - {self.starttime} to {self.endtime}"
+        return f"{self.course.abbreviation} - {self.timeslottype} - {self.starttime} to {self.endtime}"
 
 class RoomSlot(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)

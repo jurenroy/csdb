@@ -1,0 +1,8 @@
+<h1>Update Timeslot</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="text" name="starttime" value="{{ timeslot.starttime }}" required>
+    <input type="text" name="endtime" value="{{ timeslot.endtime }}" required>
+    <input type="text" name="timeslottype" value="{{ timeslot.timeslottype }}" required>
+    <button type="submit">Update timeslot</button>
+</form>
