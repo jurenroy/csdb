@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot
+from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot, Schedule
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 
@@ -324,3 +324,25 @@ def get_roomslot_json(request):
         for roomslot in roomslots
     ]
     return JsonResponse(roomslot_data, safe=False)
+
+def get_schedule_json(request):
+    schedules = Schedule.objects.all()
+    schedule_data = [
+        {
+            'scheduleID': schedule.id,
+            'course': schedule.course.abbreviation if schedule.course else None,
+            'section_year': schedule.section_year,
+            'section_number': schedule.section_number,
+            'subject_code': schedule.subject_code,
+            'subject_name': schedule.subject_name,
+            'instructor': schedule.instructor,
+            'lecture_day': schedule.lecture_day,
+            'lecture_time': schedule.lecture_time,
+            'lecture_room': schedule.lecture_room,
+            'lab_day': schedule.lab_day,
+            'lab_time': schedule.lab_time,
+            'lab_room': schedule.lab_room,
+        }
+        for schedule in schedules
+    ]
+    return JsonResponse(schedule_data, safe=False)
