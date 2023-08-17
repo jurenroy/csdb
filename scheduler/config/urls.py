@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
 from accounts.views import  UserListView, update_profile, profile_updated
-from scheduling.views import add_course, delete_course, update_course, get_course_json, add_room, update_room, delete_room, get_room_json, add_subject, update_subject, delete_subject, get_subject_json, add_section, delete_section,get_section_json, delete_selected_rooms, delete_all_rooms, add_timeslot, delete_timeslot, update_timeslot, get_timeslot_json, get_roomslot_json, get_schedule_json
+from scheduling.views import add_course, delete_course, update_course, get_course_json, add_room, update_room, delete_room, get_room_json, add_subject, update_subject, delete_subject, get_subject_json, add_section, delete_section,get_section_json, delete_selected_rooms, delete_all_rooms, add_timeslot, delete_timeslot, update_timeslot, get_timeslot_json, get_roomslot_json, get_schedule_json, update_schedule
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -54,5 +54,6 @@ urlpatterns = [
     path('get_timeslot_json/', get_timeslot_json, name='get_timeslot_json'),
     path('get_roomslot_json/', get_roomslot_json, name='get_roomslot_json'),
     path('get_schedule_json/', get_schedule_json, name='get_schedule_json'),
+    path('update_schedule/<int:schedule_id>/', update_schedule, name='update_schedule'),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

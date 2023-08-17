@@ -302,14 +302,20 @@ class Schedule(models.Model):
     instructor = models.CharField(max_length=100, null=True, blank=True)
     
     # Lecture Session
+    lecture_roomslotnumber = models.CharField(max_length=20, null=True, blank=True)
     lecture_day = models.CharField(max_length=20, null=True, blank=True)
-    lecture_time = models.CharField(max_length=50, null=True, blank=True)
-    lecture_room = models.CharField(max_length=50, null=True, blank=True)
+    lecture_starttime = models.CharField(max_length=50, null=True, blank=True)
+    lecture_endtime = models.CharField(max_length=50, null=True, blank=True)
+    lecture_building_number = models.CharField(max_length=50, null=True, blank=True)
+    lecture_roomname = models.CharField(max_length=50, null=True, blank=True)
     
     # Laboratory Session
+    lab_roomslotnumber = models.CharField(max_length=20, null=True, blank=True)
     lab_day = models.CharField(max_length=20, null=True, blank=True)
-    lab_time = models.CharField(max_length=50, null=True, blank=True)
-    lab_room = models.CharField(max_length=50, null=True, blank=True)
+    lab_starttime = models.CharField(max_length=50, null=True, blank=True)
+    lab_endtime = models.CharField(max_length=50, null=True, blank=True)
+    lab_building_number = models.CharField(max_length=50, null=True, blank=True)
+    lab_roomname = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         year_value = 1
@@ -319,7 +325,7 @@ class Schedule(models.Model):
             year_value = 3
         elif self.section_year == "Fourth Year":
             year_value = 4
-        return f"{self.course.abbreviation}{year_value}R{self.section_number} ({self.subject_code} - {self.subject_name})"
+        return f"{self.course}{year_value}R{self.section_number} ({self.subject_code} - {self.subject_name})"
     
 
 @receiver(post_save, sender=Subject)
@@ -352,11 +358,15 @@ def create_schedule(sender, instance, created, **kwargs):
                         defaults={
                             "instructor": "",
                             "lecture_day": "",
-                            "lecture_time": "",
-                            "lecture_room": "",
+                            "lecture_starttime": "",
+                            "lecture_endtime": "",
+                            "lecture_building_number": "",
+                            "lecture_roomname": "",
                             "lab_day": "",
-                            "lab_time": "",
-                            "lab_room": "",
+                            "lab_starttime": "",
+                            "lab_endtime": "",
+                            "lab_building_number": "",
+                            "lab_roomname": "",
                         }
                     )
 

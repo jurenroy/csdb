@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot, Schedule
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
+from .forms import ScheduleForm
 
 # Course views
 
@@ -337,12 +338,45 @@ def get_schedule_json(request):
             'subject_name': schedule.subject_name,
             'instructor': schedule.instructor,
             'lecture_day': schedule.lecture_day,
-            'lecture_time': schedule.lecture_time,
-            'lecture_room': schedule.lecture_room,
+            'lecture_starttime': schedule.lecture_starttime,
+            'lecture_endtime': schedule.lecture_endtime,
+            'lecture_building_number': schedule.lecture_building_number,
+            'lecture_roomname': schedule.lecture_roomname,
             'lab_day': schedule.lab_day,
-            'lab_time': schedule.lab_time,
-            'lab_room': schedule.lab_room,
+            'lab_starttime': schedule.lab_starttime,
+            'lab_endtime': schedule.lab_endtime,
+            'lab_building_number': schedule.lab_building_number,
+            'lab_roomname': schedule.lab_roomname,
         }
         for schedule in schedules
     ]
     return JsonResponse(schedule_data, safe=False)
+    
+@csrf_exempt
+def update_schedule(request, schedule_id):
+    schedule = get_object_or_404(Schedule, id=schedule_id)
+    
+    lecture_roomslots = RoomSlot.objects.filter(course=schedule.course, roomslottype='Lecture', availability=True)
+    lab_roomslots = RoomSlot.objects.filter(course=schedule.course, roomslottype='Laboratory', availability=True)
+    # Retrieve other necessary roomslots for populating other dropdowns
+    
+    if request.method == 'POST':
+        form = ScheduleForm(request.POST, instance=schedule)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({'message': 'Schedule updated successfully'})
+        else:
+            print("Form is not valid")
+            print(form.errors)
+            return JsonResponse({'message': 'Invalid schedule data'})
+    else:
+        form = ScheduleForm(instance=schedule)
+    
+    context = {
+        'form': form,
+        'lecture_roomslots': lecture_roomslots,
+        'lab_roomslots': lab_roomslots,
+        # Add other context variables for other dropdowns
+    }
+    
+    return render(request, 'update_schedule.html', context)

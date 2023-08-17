@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Schedule</title>
+</head>
+<body>
+  <h2>Update Schedule</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <label for="course">Course:</label>
+    <input type="text" name="{{ form.course.name }}" value="{{ form.instance.course }}" readonly>
+    <br>
+
+    <label for="{{ form.section_year.id_for_label }}">Section Year:</label>
+    <input type="text" name="{{ form.section_year.name }}" value="{{ form.section_year.value }}" readonly>
+    <br>
+
+    <label for="{{ form.section_number.id_for_label }}">Section Number:</label>
+    <input type="text" name="{{ form.section_number.name }}" value="{{ form.section_number.value }}" readonly>
+    <br>
+
+    <label for="{{ form.subject_code.id_for_label }}">Subject Code:</label>
+    <input type="text" name="{{ form.subject_code.name }}" value="{{ form.subject_code.value }}" readonly>
+    <br>
+
+    <label for="{{ form.subject_name.id_for_label }}">Subject Name:</label>
+    <input type="text" name="{{ form.subject_name.name }}" value="{{ form.subject_name.value }}" readonly>
+    <br>
+
+    <!-- Repeat the same process for other fields -->
+    <!-- ... -->
+    <label for="instructor">instructor:</label>
+    <input type="text" name="{{ form.instructor.name}}" value="{{ form.instructor.value }}">
+    <br>
+
+    <label for="lecture_roomslotnumber">Lecture roomslotnumber:</label>
+    <input type="text" name="{{ form.lecture_roomslotnumber.name}}" value="{{ form.lecture_roomslotnumber.value }}">
+    <br>
+
+    <label for="lecture_day">Lecture Day:</label>
+    <input type="text" name="{{ form.lecture_day.name}}" value="{{ form.lecture_day.value }}">
+    <br>
+
+    <label for="lecture_starttime">Lecture Start Time:</label>
+    <input type="text" name="{{ form.lecture_starttime.name }}" value="{{ form.lecture_starttime.value }}">
+    <br>
+
+    <label for="lecture_endtime">Lecture End Time:</label>
+    <input type="text" name="{{ form.lecture_endtime.name }}" value="{{ form.lecture_endtime.value }}">
+    <br>
+
+    <label for="lecture_building_number">Lecture Building Number:</label>
+    <input type="text" name="{{ form.lecture_building_number.name }}" value="{{ form.lecture_building_number.value }}">
+    <br>
+
+    <label for="lecture_roomname">Lecture Room Name:</label>
+    <input type="text" name="{{ form.lecture_roomname.name }}" value="{{ form.lecture_roomname.value }}">
+    <br>
+
+    <label for="lab_roomslotnumber">Lab roomslotnumber:</label>
+    <input type="text" name="{{ form.lab_roomslotnumber.name }}" value="{{ form.lab_roomslotnumber.value }}">
+    <br>
+
+    <label for="lab_day">Lab Day:</label>
+    <input type="text" name="{{ form.lab_day.name }}" value="{{ form.lab_day.value }}">
+    <br>
+
+    <label for="lab_starttime">Lab Start Time:</label>
+    <input type="text" name="{{ form.lab_starttime.name }}" value="{{ form.lab_starttime.value }}">
+    <br>
+
+    <label for="lab_endtime">Lab End Time:</label>
+    <input type="text" name="{{ form.lab_endtime.name }}" value="{{ form.lab_endtime.value }}">
+    <br>
+
+    <label for="lab_building_number">Lab Building Number:</label>
+    <input type="text" name="{{ form.lab_building_number.name }}" value="{{ form.lab_building_number.value }}">
+    <br>
+
+    <label for="lab_roomname">Lab Room Name:</label>
+    <input type="text" name="{{ form.lab_roomname.name }}" value="{{ form.lab_roomname.value }}">
+    <br>
+    <!-- Repeat the same process for other inputs -->
+    <!-- ... -->
+
+    <button type="submit">Update Schedule</button>
+  </form>
+</body>
+</html>
