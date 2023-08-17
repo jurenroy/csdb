@@ -425,3 +425,45 @@ def update_related_schedule_for_subject(sender, instance, **kwargs):
             )
 
 
+@receiver(pre_save, sender=Schedule)
+def update_room_slot_availability(sender, instance, **kwargs):
+    try:
+        old_instance = Schedule.objects.get(pk=instance.pk)
+    except Schedule.DoesNotExist:
+        return  # Ignore if the old instance doesn't exist
+
+    # Check if lecture_roomslotnumber has changed
+    if old_instance.lecture_roomslotnumber != instance.lecture_roomslotnumber:
+        if old_instance.lecture_roomslotnumber:
+            # Set the availability of the old lecture room slot to True
+            RoomSlot.objects.filter(
+                roomslotnumber=old_instance.lecture_roomslotnumber,
+                roomslottype='Lecture',
+                course=instance.course
+            ).update(availability=True)
+
+        if instance.lecture_roomslotnumber:
+            # Set the availability of the new lecture room slot to False
+            RoomSlot.objects.filter(
+                roomslotnumber=instance.lecture_roomslotnumber,
+                roomslottype='Lecture',
+                course=instance.course
+            ).update(availability=False)
+
+    # Check if lab_roomslotnumber has changed
+    if old_instance.lab_roomslotnumber != instance.lab_roomslotnumber:
+        if old_instance.lab_roomslotnumber:
+            # Set the availability of the old lab room slot to True
+            RoomSlot.objects.filter(
+                roomslotnumber=old_instance.lab_roomslotnumber,
+                roomslottype='Laboratory',
+                course=instance.course
+            ).update(availability=True)
+
+        if instance.lab_roomslotnumber:
+            # Set the availability of the new lab room slot to False
+            RoomSlot.objects.filter(
+                roomslotnumber=instance.lab_roomslotnumber,
+                roomslottype='Laboratory',
+                course=instance.course
+            ).update(availability=False)
