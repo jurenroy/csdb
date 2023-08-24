@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
 from accounts.views import  UserListView, update_profile, profile_updated
-from scheduling.views import add_course, delete_course, update_course, get_course_json, add_room, update_room, delete_room, get_room_json, add_subject, update_subject, delete_subject, get_subject_json, add_section, delete_section,get_section_json, delete_selected_rooms, delete_all_rooms, add_timeslot, delete_timeslot, update_timeslot, get_timeslot_json, get_roomslot_json, get_schedule_json, update_schedule
+from scheduling.views import add_course, delete_course, update_course, get_course_json, add_room, update_room, delete_room, get_room_json, add_subject, update_subject, delete_subject, get_subject_json, add_section, delete_section,get_section_json, add_timeslot, delete_timeslot, update_timeslot, get_timeslot_json, get_roomslot_json, get_schedule_json, update_schedule, automate_schedule
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -32,28 +32,27 @@ urlpatterns = [
     path('update-profile/<str:username>/', update_profile, name='update_profile'),
     path('profile-updated/', profile_updated, name='profile_updated'),
     path('add_course/', add_course, name='add_course'),
-    path('delete_course/<str:abbreviation>/', delete_course, name='delete_course'),
-    path('update_course/<str:abbreviation>/', update_course, name='update_course'),
+    path('delete_course/<str:course_id>/', delete_course, name='delete_course'),
+    path('update_course/<str:course_id>/', update_course, name='update_course'),
     path('get_course_json/', get_course_json, name='get_course_json'),
-    path('add_room/<str:abbreviation>/', add_room, name='add_room'),
-    path('delete_room/<str:abbreviation>/<str:roomname>/', delete_room, name='delete_room'),
-    path('update_room/<str:abbreviation>/<str:roomname>/', update_room, name='update_room'),
+    path('add_room/<str:course_id>/', add_room, name='add_room'),
+    path('delete_room/<str:course_id>/<str:room_id>/', delete_room, name='delete_room'),
+    path('update_room/<str:course_id>/<str:room_id>/', update_room, name='update_room'),
     path('get_room_json/', get_room_json, name='get_room_json'),
-    path('add_subject/<str:abbreviation>/', add_subject, name='add_subject'),
-    path('delete_subject/<str:abbreviation>/<str:subjectcode>/', delete_subject, name='delete_subject'),
-    path('update_subject/<str:abbreviation>/<str:subjectcode>/', update_subject, name='update_subject'),
+    path('add_subject/<str:course_id>/', add_subject, name='add_subject'),
+    path('delete_subject/<str:course_id>/<str:subject_id>/', delete_subject, name='delete_subject'),
+    path('update_subject/<str:course_id>/<str:subject_id>/', update_subject, name='update_subject'),
     path('get_subject_json/', get_subject_json, name='get_subject_json'),
-    path('add_section/<str:course>/<str:year>/', add_section, name='add_section'),
-    path('delete_section/<str:course>/<str:year>/', delete_section, name='delete_section'),
+    path('add_section/<str:course_id>/<str:year>/', add_section, name='add_section'),
+    path('delete_section/<str:course_id>/<str:year>/', delete_section, name='delete_section'),
     path('get_section_json/', get_section_json, name='get_section_json'),
-    path('delete_selected_rooms/<str:abbreviation>/<str:roomtype>/', delete_selected_rooms, name='delete_selected_rooms'),
-    path('delete_all_rooms/<str:abbreviation>/<str:roomtype>/', delete_all_rooms, name='delete_all_rooms'),
-    path('add_timeslot/<str:abbreviation>/', add_timeslot, name='add_timeslot'),
-    path('delete_timeslot/<str:abbreviation>/<str:starttime>/<str:endtime>/', delete_timeslot, name='delete_timeslot'),
-    path('update_timeslot/<str:abbreviation>/<str:starttime>/<str:endtime>/', update_timeslot, name='update_timeslot'),
+    path('add_timeslot/<str:course_id>/', add_timeslot, name='add_timeslot'),
+    path('delete_timeslot/<str:course_id>/<str:timeslot_id>/', delete_timeslot, name='delete_timeslot'),
+    path('update_timeslot/<str:course_id>/<str:timeslot_id>/', update_timeslot, name='update_timeslot'),
     path('get_timeslot_json/', get_timeslot_json, name='get_timeslot_json'),
     path('get_roomslot_json/', get_roomslot_json, name='get_roomslot_json'),
     path('get_schedule_json/', get_schedule_json, name='get_schedule_json'),
+    path('automate_schedule/<int:course_id>/', automate_schedule, name='automate_schedule'),
     path('update_schedule/<int:schedule_id>/', update_schedule, name='update_schedule'),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

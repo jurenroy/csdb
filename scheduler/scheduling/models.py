@@ -11,13 +11,8 @@ class Course(models.Model):
     def __str__(self):
         return self.coursename
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['abbreviation'], name='unique_course_abbreviation'),
-        ]
-
 class Subject(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, to_field='abbreviation')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     year = models.CharField(max_length=20, blank=True)
     subjectcode = models.CharField(max_length=20, blank=True)
     subjectname = models.CharField(max_length=100, blank=True)
@@ -26,7 +21,7 @@ class Subject(models.Model):
         return f"{self.subjectcode} - {self.subjectname}"
     
 class Section(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, to_field='abbreviation')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     year = models.CharField(max_length=20)
     sectionnumber = models.CharField(max_length=20)
 
@@ -39,7 +34,7 @@ class Section(models.Model):
         elif self.year == "Fourth Year":
             year_value = 4
         return f"{self.course.abbreviation}{year_value}R{self.sectionnumber}"
-    
+
 @receiver(post_save, sender=Course)
 def create_first_section_for_course(sender, instance, created, **kwargs):
     if created:
@@ -52,13 +47,13 @@ class Room(models.Model):
     roomname = models.CharField(max_length=100, blank=True)
     building_number = models.CharField(max_length=20, blank=True)
     roomtype = models.CharField(max_length=100, blank=True)  # New field for roomtype
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, to_field='abbreviation')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return f"{self.course.abbreviation} : {self.building_number} - {self.roomname} ( {self.roomtype} )"
 
 class TimeSlot(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, to_field='abbreviation')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     timeslottype = models.CharField(max_length=50)
     starttime = models.TimeField()
     endtime = models.TimeField()
@@ -294,7 +289,7 @@ def update_related_room_slots_for_timeslot(sender, instance, **kwargs):
             non_matched_room_slots.delete()
 
 class Schedule(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, to_field='abbreviation')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     section_year = models.CharField(max_length=20, null=True, blank=True)  # Field to store year for section
     section_number = models.CharField(max_length=20, null=True, blank=True)  # Field to store section number
     subject_code = models.CharField(max_length=20, null=True, blank=True)  # Field to store subject code
@@ -467,3 +462,73 @@ def update_room_slot_availability(sender, instance, **kwargs):
                 roomslottype='Laboratory',
                 course=instance.course
             ).update(availability=False)
+
+@receiver(pre_delete, sender=Schedule)
+def set_roomslot_availability_on_schedule_delete(sender, instance, **kwargs):
+    # Check if the Schedule is deleted
+    # Set the availability of lecture and lab room slots back to True
+    if instance.lecture_roomslotnumber:
+        RoomSlot.objects.filter(
+            roomslotnumber=instance.lecture_roomslotnumber,
+            roomslottype='Lecture',
+            course=instance.course
+        ).update(availability=True)
+
+    if instance.lab_roomslotnumber:
+        RoomSlot.objects.filter(
+            roomslotnumber=instance.lab_roomslotnumber,
+            roomslottype='Laboratory',
+            course=instance.course
+        ).update(availability=True)
+
+
+@receiver(pre_save, sender=RoomSlot)
+def update_schedule_on_roomslot_update(sender, instance, **kwargs):
+    # Check if it's an update (not a new creation)
+    if instance.pk:
+        try:
+            old_instance = RoomSlot.objects.get(pk=instance.pk)
+        except RoomSlot.DoesNotExist:
+            return  # Ignore if the old instance doesn't exist
+
+        # Check if relevant fields have changed
+        if (
+            old_instance.building_number != instance.building_number or
+            old_instance.roomname != instance.roomname or
+            old_instance.day != instance.day or
+            old_instance.starttime != instance.starttime or
+            old_instance.endtime != instance.endtime
+        ):
+            # Find the corresponding Schedule, if it exists
+            try:
+                if old_instance.roomslottype == 'Lecture':
+                    schedule = Schedule.objects.get(
+                        lecture_roomslotnumber=old_instance.roomslotnumber,
+                        course=instance.course,
+                    )
+                    
+                    # Update the Lecture fields in Schedule
+                    schedule.lecture_roomslotnumber = instance.roomslotnumber
+                    schedule.lecture_building_number = instance.building_number
+                    schedule.lecture_roomname = instance.roomname
+                    schedule.lecture_day = instance.day
+                    schedule.lecture_starttime = instance.starttime
+                    schedule.lecture_endtime = instance.endtime
+                elif old_instance.roomslottype == 'Laboratory':
+                    schedule = Schedule.objects.get(
+                        lab_roomslotnumber=old_instance.roomslotnumber,
+                        course=instance.course,
+                    )
+                    
+                    # Update the Laboratory fields in Schedule
+                    schedule.lab_roomslotnumber = instance.roomslotnumber
+                    schedule.lab_building_number = instance.building_number
+                    schedule.lab_roomname = instance.roomname
+                    schedule.lab_day = instance.day
+                    schedule.lab_starttime = instance.starttime
+                    schedule.lab_endtime = instance.endtime
+                
+                # Save the Schedule
+                schedule.save()
+            except Schedule.DoesNotExist:
+                pass  # No corresponding Schedule found, do nothing

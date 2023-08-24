@@ -4,6 +4,7 @@ from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot, Schedule
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from .forms import ScheduleForm
+import random
 
 # Course views
 
@@ -23,14 +24,14 @@ def add_course(request):
         return render(request, 'add_course.html')
     
 @csrf_exempt
-def delete_course(request, abbreviation):
-    course = get_object_or_404(Course, abbreviation=abbreviation)
+def delete_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
     course.delete()
     return JsonResponse({'message': 'Course deleted successfully'})
 
 @csrf_exempt
-def update_course(request, abbreviation):
-    course = get_object_or_404(Course, abbreviation=abbreviation)
+def update_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
 
     if request.method == 'POST':
         coursename = request.POST.get('coursename')
@@ -41,6 +42,10 @@ def update_course(request, abbreviation):
             try:
                 # Start a transaction to ensure atomicity
                 with transaction.atomic():
+                    # Check if the new abbreviation is unique
+                    if new_abbreviation != course.abbreviation and Course.objects.filter(abbreviation=new_abbreviation).exclude(id=course.id).exists():
+                        return JsonResponse({'message': 'Abbreviation already exists'}, status=400)
+
                     # Update the course fields
                     course.coursename = coursename
                     course.abbreviation = new_abbreviation
@@ -48,7 +53,7 @@ def update_course(request, abbreviation):
                     course.save()
 
                     # Update the affected models (e.g., Section, Room, etc.)
-                    Section.objects.filter(course__abbreviation=abbreviation).update(course=course)
+                    Section.objects.filter(course__id=course_id).update(course=course)
                     # Update other affected models as needed
 
                 return JsonResponse({'message': 'Course and affected models updated successfully'})
@@ -58,12 +63,6 @@ def update_course(request, abbreviation):
             return JsonResponse({'message': 'Invalid course data'}, status=400)
     else:
         return render(request, 'update_course.html', {'course': course})
-
-
-@csrf_exempt
-def course_list(request):
-    courses = Course.objects.all()
-    return render(request, 'course_list.html', {'courses': courses})
 
 @csrf_exempt
 def get_course_json(request):
@@ -75,13 +74,13 @@ def get_course_json(request):
 # Room Views
 
 @csrf_exempt
-def add_room(request, abbreviation):
+def add_room(request, course_id):
     if request.method == 'POST':
         roomname = request.POST.get('roomname')
         building_number = request.POST.get('building_number')
         roomtype = request.POST.get('roomtype')  # New field for room type
         if roomname and building_number and roomtype:
-            course = get_object_or_404(Course, abbreviation=abbreviation)
+            course = get_object_or_404(Course, id=course_id)
             room = Room(roomname=roomname, building_number=building_number, roomtype=roomtype, course=course)
             room.save()
             return JsonResponse({'message': 'Room added successfully'})
@@ -91,53 +90,57 @@ def add_room(request, abbreviation):
         return render(request, 'add_room.html')
 
 @csrf_exempt
-def delete_room(request, abbreviation, roomname):
-    room = get_object_or_404(Room, course__abbreviation=abbreviation, roomname=roomname)
+def delete_room(request, course_id, room_id):
+    room = get_object_or_404(Room, course__id=course_id, id=room_id)
     room.delete()
     return JsonResponse({'message': 'Room deleted successfully'})
 
 @csrf_exempt
-def update_room(request, abbreviation, roomname):
-    room = get_object_or_404(Room, course__abbreviation=abbreviation, roomname=roomname)
+def update_room(request, course_id, room_id):
+    room = get_object_or_404(Room, course__id=course_id, id=room_id)
 
     if request.method == 'POST':
         roomname = request.POST.get('roomname')
         building_number = request.POST.get('building_number')
-        roomtype = request.POST.get('roomtype')  # New field for room type
+        roomtype = request.POST.get('roomtype')
+
         if roomname and building_number and roomtype:
             room.roomname = roomname
             room.building_number = building_number
             room.roomtype = roomtype
             room.save()
-            return JsonResponse({'message': 'Room updated successfully'})
+            
+            updated_room_data = {
+                'roomID': room.id,
+                'roomname': room.roomname,
+                'building_number': room.building_number,
+                'roomtype': room.roomtype,
+                'course': room.course.abbreviation if room.course else None
+            }
+            
+            return JsonResponse({'message': 'Room updated successfully', 'room': updated_room_data})
         else:
             return render(request, 'update_room.html', {'room': room, 'message': 'Invalid room data'})
     else:
         return render(request, 'update_room.html', {'room': room})
 
 @csrf_exempt
-def room_list(request):
-    rooms = Room.objects.all()
-    return render(request, 'room_list.html', {'rooms': rooms})
-
-@csrf_exempt
 def get_room_json(request):
     rooms = Room.objects.all()
-    room_data = [{'roomID': room.id, 'roomname': room.roomname, 'building_number': room.building_number, 'roomtype': room.roomtype, 'course': room.course.abbreviation if room.course else None} for room in rooms]
+    room_data = [{'roomID': room.id, 'roomname': room.roomname, 'building_number': room.building_number, 'roomtype': room.roomtype, 'course': room.course.id if room.course else None} for room in rooms]
     return JsonResponse(room_data, safe=False)
 
 
 #Subject View
-
 @csrf_exempt
-def add_subject(request, abbreviation):
+def add_subject(request, course_id):
     if request.method == 'POST':
         year = request.POST.get('year')
         subjectcode = request.POST.get('subjectcode')
         subjectname = request.POST.get('subjectname')
 
         if year and subjectcode and subjectname:
-            course = get_object_or_404(Course, abbreviation=abbreviation)
+            course = get_object_or_404(Course, id=course_id)
             subject = Subject(course=course, year=year, subjectcode=subjectcode, subjectname=subjectname)
             subject.save()
             return JsonResponse({'message': 'Subject added successfully'})
@@ -147,8 +150,8 @@ def add_subject(request, abbreviation):
         return render(request, 'add_subject.html')
 
 @csrf_exempt
-def update_subject(request, abbreviation, subjectcode):
-    subject = get_object_or_404(Subject, course__abbreviation=abbreviation, subjectcode=subjectcode)
+def update_subject(request, course_id, subject_id):
+    subject = get_object_or_404(Subject, course__id=course_id, id=subject_id)
 
     if request.method == 'POST':
         year = request.POST.get('year')
@@ -167,69 +170,58 @@ def update_subject(request, abbreviation, subjectcode):
         return render(request, 'update_subject.html', {'subject': subject})
 
 @csrf_exempt
-def delete_subject(request, abbreviation, subjectcode):
-    subject = get_object_or_404(Subject, course__abbreviation=abbreviation, subjectcode=subjectcode)
+def delete_subject(request, course_id, subject_id):
+    subject = get_object_or_404(Subject, course__id=course_id, id=subject_id)
     subject.delete()
     return JsonResponse({'message': 'Subject deleted successfully'})
 
 @csrf_exempt
 def get_subject_json(request):
     subjects = Subject.objects.all()
-    subject_data = [{'subjectcode': subject.subjectcode, 'subjectname': subject.subjectname, 'year': subject.year, 'course': subject.course.abbreviation if subject.course else None} for subject in subjects]
+    subject_data = [{'subjectID': subject.id, 'subjectcode': subject.subjectcode, 'subjectname': subject.subjectname, 'year': subject.year, 'course': subject.course.id if subject.course else None} for subject in subjects]
     return JsonResponse(subject_data, safe=False)
 
-#Section View
 
+#Section View
 @csrf_exempt
-def add_section(request, course, year):
+def add_section(request, course_id, year):
     if request.method == 'POST':
-        # Get the last section number for the given course and year
-        last_section = Section.objects.filter(course__abbreviation=course, year=year).order_by('-sectionnumber').first()
-        if last_section:
-            section_number = int(last_section.sectionnumber) + 1
-        else:
-            # If no section exists, create the first section with number 1
-            section_number = 1
+        # Count the existing sections for the given course and year
+        existing_sections_count = Section.objects.filter(course__id=course_id, year=year).count()
+
+        # Assign the next section number by incrementing the count
+        section_number = existing_sections_count + 1
 
         # Create the new section
-        course_obj = get_object_or_404(Course, abbreviation=course)
+        course_obj = get_object_or_404(Course, id=course_id)
         section = Section(course=course_obj, year=year, sectionnumber=section_number)
         section.save()
 
         return JsonResponse({'message': 'Section added successfully'})
     else:
         return JsonResponse({'message': 'Invalid request method'})
-    
+
 @csrf_exempt
-def delete_section(request, course, year):
+def delete_section(request, course_id, year):
     if request.method == 'DELETE':
-        # Get the section with the highest section number for the given course and year
         try:
-            section = Section.objects.filter(course__abbreviation=course, year=year).order_by('-sectionnumber').first()
-            if section:
-                if section.sectionnumber == '1':
-                    return JsonResponse({'message': 'There is 1 section. Cannot delete the default section.'})
-                else:
-                    section.delete()
-                    return JsonResponse({'message': 'Section deleted successfully'})
+            # Get the section with the highest section number for the given course and year
+            sections = Section.objects.filter(course__id=course_id, year=year)
+            if sections.exists():
+                highest_section = max(sections, key=lambda section: int(section.sectionnumber))
+                section_number = highest_section.sectionnumber
+                highest_section.delete()
+                return JsonResponse({'message': f'Section {section_number} deleted successfully'})
             else:
-                return JsonResponse({'message': 'No section found for the given course and year'})
+                return JsonResponse({'message': 'No sections found for the given course and year'})
         except Exception as e:
             return JsonResponse({'message': 'Error deleting section'})
     else:
         return JsonResponse({'message': 'Invalid request method'})
 
-
 def get_section_json(request):
     sections = Section.objects.all()
-    data = [
-        {
-            'course': section.course.abbreviation,
-            'year': section.year,
-            'sectionnumber': section.sectionnumber,
-        }
-        for section in sections
-    ]
+    data = [{'course': section.course.id, 'year': section.year, 'sectionnumber': section.sectionnumber,} for section in sections]
     return JsonResponse(data, safe=False)
 
 
@@ -256,13 +248,13 @@ def delete_all_rooms(request, abbreviation, roomtype):
     
 #Timeslot Views
 @csrf_exempt
-def add_timeslot(request, abbreviation):
+def add_timeslot(request, course_id):
     if request.method == 'POST':
         starttime = request.POST.get('starttime')
         endtime = request.POST.get('endtime')
         timeslottype = request.POST.get('timeslottype')  # New field for timeslot type
         if starttime and endtime and timeslottype:
-            course = get_object_or_404(Course, abbreviation=abbreviation)
+            course = get_object_or_404(Course, id=course_id)
             timeslot = TimeSlot(starttime=starttime, endtime=endtime, timeslottype=timeslottype, course=course)
             timeslot.save()
             return JsonResponse({'message': 'Timeslot added successfully'})
@@ -272,14 +264,14 @@ def add_timeslot(request, abbreviation):
         return render(request, 'add_timeslot.html')
 
 @csrf_exempt
-def delete_timeslot(request, abbreviation, starttime, endtime):
-    timeslot = get_object_or_404(TimeSlot, course__abbreviation=abbreviation, starttime=starttime, endtime=endtime)
+def delete_timeslot(request, course_id, timeslot_id):
+    timeslot = get_object_or_404(TimeSlot, course__id=course_id, id=timeslot_id)
     timeslot.delete()
     return JsonResponse({'message': 'Timeslot deleted successfully'})
 
 @csrf_exempt
-def update_timeslot(request, abbreviation, starttime, endtime):
-    timeslot = get_object_or_404(TimeSlot, course__abbreviation=abbreviation, starttime=starttime, endtime=endtime)
+def update_timeslot(request, course_id, timeslot_id):
+    timeslot = get_object_or_404(TimeSlot, course__id=course_id, id=timeslot_id)
 
     if request.method == 'POST':
         starttime = request.POST.get('starttime')
@@ -297,14 +289,9 @@ def update_timeslot(request, abbreviation, starttime, endtime):
         return render(request, 'update_timeslot.html', {'timeslot': timeslot})
 
 @csrf_exempt
-def timeslot_list(request):
-    timeslot = TimeSlot.objects.all()
-    return render(request, 'timeslot_list.html', {'rooms': timeslot})
-
-@csrf_exempt
 def get_timeslot_json(request):
     timeslots = TimeSlot.objects.all()
-    timeslot_data = [{'timeslotID': timeslot.id, 'starttime': timeslot.starttime, 'endtime': timeslot.endtime, 'timeslottype': timeslot.timeslottype, 'course': timeslot.course.abbreviation if timeslot.course else None} for timeslot in timeslots]
+    timeslot_data = [{'timeslotID': timeslot.id, 'starttime': timeslot.starttime, 'endtime': timeslot.endtime, 'timeslottype': timeslot.timeslottype, 'course': timeslot.course.id if timeslot.course else None} for timeslot in timeslots]
     return JsonResponse(timeslot_data, safe=False)
 
 def get_roomslot_json(request):
@@ -320,7 +307,7 @@ def get_roomslot_json(request):
             'endtime': roomslot.endtime,
             'roomslotnumber': roomslot.roomslotnumber,
             'availability': roomslot.availability,
-            'course': roomslot.course.abbreviation if roomslot.course else None
+            'course': roomslot.course.id if roomslot.course else None
         }
         for roomslot in roomslots
     ]
@@ -331,7 +318,7 @@ def get_schedule_json(request):
     schedule_data = [
         {
             'scheduleID': schedule.id,
-            'course': schedule.course.abbreviation if schedule.course else None,
+            'course': schedule.course.id if schedule.course else None,
             'section_year': schedule.section_year,
             'section_number': schedule.section_number,
             'subject_code': schedule.subject_code,
@@ -380,3 +367,75 @@ def update_schedule(request, schedule_id):
     }
     
     return render(request, 'update_schedule.html', context)
+
+@csrf_exempt
+def automate_schedule(request, course_id):
+    try:
+        # Get the course
+        course = Course.objects.get(id=course_id)
+        
+        # Get available room slots for lectures and laboratories
+        available_lecture_slots = RoomSlot.objects.filter(
+            course=course,
+            roomslottype='Lecture',
+            availability=True
+        )
+
+        available_lab_slots = RoomSlot.objects.filter(
+            course=course,
+            roomslottype='Laboratory',
+            availability=True
+        )
+
+        # Set initial values for filter conditions
+        lecture_day = ''
+        lecture_starttime = ''
+        lecture_endtime = ''
+        lab_day = ''
+        lab_starttime = ''
+        lab_endtime = ''
+
+        # Filter schedules based on initial values
+        schedules = Schedule.objects.filter(
+            course=course,
+            lecture_day=lecture_day,
+            lecture_starttime=lecture_starttime,
+            lecture_endtime=lecture_endtime,
+            lab_day=lab_day,
+            lab_starttime=lab_starttime,
+            lab_endtime=lab_endtime
+        )
+
+        for schedule in schedules:
+            if available_lecture_slots.exists():
+                random_lecture_slot = random.choice(available_lecture_slots)
+                schedule.lecture_day = random_lecture_slot.day
+                schedule.lecture_starttime = random_lecture_slot.starttime
+                schedule.lecture_endtime = random_lecture_slot.endtime
+                schedule.lecture_building_number = random_lecture_slot.building_number
+                schedule.lecture_roomname = random_lecture_slot.roomname
+                schedule.lecture_roomslotnumber = random_lecture_slot.roomslotnumber  # Assign lecture roomslotnumber
+                random_lecture_slot.availability = False
+                random_lecture_slot.save()
+                available_lecture_slots = available_lecture_slots.exclude(roomslotnumber=random_lecture_slot.roomslotnumber)
+
+            if available_lab_slots.exists():
+                random_lab_slot = random.choice(available_lab_slots)
+                schedule.lab_day = random_lab_slot.day
+                schedule.lab_starttime = random_lab_slot.starttime
+                schedule.lab_endtime = random_lab_slot.endtime
+                schedule.lab_building_number = random_lab_slot.building_number
+                schedule.lab_roomname = random_lab_slot.roomname
+                schedule.lab_roomslotnumber = random_lab_slot.roomslotnumber  # Assign lab roomslotnumber
+                random_lab_slot.availability = False
+                random_lab_slot.save()
+                available_lab_slots = available_lab_slots.exclude(roomslotnumber=random_lab_slot.roomslotnumber)
+
+            schedule.save()
+            
+        if schedules.exists():
+            return JsonResponse({'message': 'Scheduling automation completed.'})
+        else:
+            return JsonResponse({'message': 'No available room slots for scheduling.'})
+    except Course.DoesNotExist:
+        return JsonResponse({'message': 'Course not found.'})

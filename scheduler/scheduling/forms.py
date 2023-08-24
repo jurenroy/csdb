@@ -1,11 +1,5 @@
 from django import forms
-from .models import Course, Schedule, RoomSlot
-
-class CourseForm(forms.ModelForm):
-    class Meta:
-        model = Course
-        fields = ['coursename', 'abbreviation']
-
+from .models import Schedule, RoomSlot
 
 class ScheduleForm(forms.ModelForm):
     class Meta:
