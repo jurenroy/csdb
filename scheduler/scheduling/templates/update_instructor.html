@@ -1,0 +1,12 @@
+<!-- update_course.html -->
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <label for="new_name">New Name:</label>
+  <input type="text" id="new_name" name="new_name" value="{{ instructor.name }}" required>
+
+  <!-- Add the college field -->
+  <label for="college">College:</label>
+  <input type="text" id="college" name="college" value="{{ instructor.college }}" required>
+  
+  <button type="submit">Update Course</button>
+</form>

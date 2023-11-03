@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot, Schedule
+from .models import Course, Room, Subject, Section, TimeSlot, RoomSlot, Schedule, Instructor
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from .forms import ScheduleForm
@@ -70,6 +70,62 @@ def get_course_json(request):
     course_data = [{'courseID': course.id, 'coursename': course.coursename, 'abbreviation': course.abbreviation, 'college': course.college} for course in courses]
     return JsonResponse(course_data, safe=False)
 
+#Instructor Views
+
+@csrf_exempt
+def add_instructor(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        college = request.POST.get('college')  # Add the college field to the form or fetch it from the user session
+        if name and college:
+            instructor = Instructor(name=name, college=college)
+            instructor.save()
+            return JsonResponse({'message': 'Instructor added successfully'})
+        else:
+            return render(request, 'add_instructor.html', {'message': 'Invalid course data'})
+    else:
+        return render(request, 'add_instructor.html')
+    
+@csrf_exempt
+def delete_instructor(request, instructor_id):
+    instructor = get_object_or_404(Instructor, id=instructor_id)
+    instructor.delete()
+    return JsonResponse({'message': 'Instructor deleted successfully'})
+
+@csrf_exempt
+def update_instructor(request, instructor_id):
+    instructor = get_object_or_404(Instructor, id=instructor_id)
+
+    if request.method == 'POST':
+        new_name = request.POST.get('new_name')
+        college = request.POST.get('college')  # Add the college field to the form or fetch it from the user session
+
+        if new_name and college:
+            try:
+                # Start a transaction to ensure atomicity
+                with transaction.atomic():
+                    # Check if the new abbreviation is unique
+                    if new_name != instructor.name and Instructor.objects.filter(name=new_name).exclude(id=instructor.id).exists():
+                        return JsonResponse({'message': 'Instructor already exists'}, status=400)
+
+                    # Update the course fields
+                    instructor.name = new_name
+                    instructor.college = college
+                    instructor.save()
+
+                return JsonResponse({'message': 'Course and affected models updated successfully'})
+            except Exception as e:
+                return JsonResponse({'message': str(e)}, status=500)
+        else:
+            return JsonResponse({'message': 'Invalid instructor data'}, status=400)
+    else:
+        return render(request, 'update_instructor.html', {'instructor': instructor})
+
+@csrf_exempt
+def get_instructor_json(request):
+    instructors = Instructor.objects.all()
+    instructor_data = [{'instructorID': instructor.id, 'name': instructor.name, 'college': instructor.college} for instructor in instructors]
+    return JsonResponse(instructor_data, safe=False)
 
 # Room Views
 

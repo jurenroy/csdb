@@ -20,6 +20,13 @@ class Subject(models.Model):
     def __str__(self):
         return f"{self.subjectcode} - {self.subjectname}"
     
+class Instructor(models.Model):
+    college = models.CharField(max_length=100, blank=True)
+    name = models.CharField(max_length=100, blank=True)
+    
+    def __str__(self):
+        return f"{self.name}"
+    
 class Section(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     year = models.CharField(max_length=20)

@@ -1,0 +1,12 @@
+<!-- add_instructor.html -->
+<form method="post">
+    {% csrf_token %}
+    <label for="name">Instructor Name:</label>
+    <input type="text" id="name" name="name" required>
+  
+    <label for="college">College:</label>
+    <input type="text" id="college" name="college" required> <!-- Add input field for college -->
+    
+    <button type="submit">Add Instructor</button>
+  </form>
+  

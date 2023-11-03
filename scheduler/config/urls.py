@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from .views import activate_account
 from accounts.views import  UserListView, update_profile, profile_updated
-from scheduling.views import add_course, delete_course, update_course, get_course_json, add_room, update_room, delete_room, get_room_json, add_subject, update_subject, delete_subject, get_subject_json, add_section, delete_section,get_section_json, add_timeslot, delete_timeslot, update_timeslot, get_timeslot_json, get_roomslot_json, get_schedule_json, update_schedule, automate_schedule
+from scheduling.views import add_course, delete_course, update_course, get_course_json, add_room, update_room, delete_room, get_room_json, add_subject, update_subject, delete_subject, get_subject_json, add_section, delete_section,get_section_json, add_timeslot, delete_timeslot, update_timeslot, get_timeslot_json, get_roomslot_json, get_schedule_json, update_schedule, automate_schedule, add_instructor, delete_instructor, update_instructor, get_instructor_json
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -35,6 +35,10 @@ urlpatterns = [
     path('delete_course/<str:course_id>/', delete_course, name='delete_course'),
     path('update_course/<str:course_id>/', update_course, name='update_course'),
     path('get_course_json/', get_course_json, name='get_course_json'),
+    path('add_instructor/', add_instructor, name='add_instructor'),
+    path('delete_instructor/<str:instructor_id>/', delete_instructor, name='delete_instructor'),
+    path('update_instructor/<str:instructor_id>/', update_instructor, name='update_instructor'),
+    path('get_instructor_json/', get_instructor_json, name='get_instructor_json'),
     path('add_room/<str:course_id>/', add_room, name='add_room'),
     path('delete_room/<str:course_id>/<str:room_id>/', delete_room, name='delete_room'),
     path('update_room/<str:course_id>/<str:room_id>/', update_room, name='update_room'),
