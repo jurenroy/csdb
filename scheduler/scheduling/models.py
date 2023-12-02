@@ -3,13 +3,55 @@ from django.db.models.signals import post_save, pre_delete, pre_save
 from django.dispatch import receiver
 
 # Create your models here.
-class Course(models.Model):
-    coursename = models.CharField(max_length=100, blank=True)
-    abbreviation = models.CharField(max_length=20, blank=True)
-    college = models.CharField(max_length=100, blank=True)
+class CollegeList(models.Model):
+    college = models.CharField(max_length=100, null=True, blank=True)
+    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+
+    def __str__(self):
+        return self.college
+    
+class CourseList(models.Model):
+    coursename = models.CharField(max_length=100, null=True, blank=True)
+    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    college = models.ForeignKey(CollegeList, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return self.coursename
+
+class College(models.Model):
+    college = models.CharField(max_length=100, null=True, blank=True)
+    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    semester = models.CharField(max_length=100, blank=True, default='First Semester')
+
+    def __str__(self):
+        return self.college
+    
+    
+class Course(models.Model):
+    coursename = models.CharField(max_length=100, null=True, blank=True)
+    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    college = models.ForeignKey(College, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return self.coursename
+
+    
+class SubjectList(models.Model):
+    SEMESTER_CHOICES = [
+        ('First Semester', 'First Semester'),
+        ('Second Semester', 'Second Semester'),
+        ('Summer', 'Summer'),
+    ]
+
+    subjectcode = models.CharField(max_length=100, null=True, blank=True)
+    subjectname = models.CharField(max_length=100, null=True, blank=True)
+    year = models.CharField(max_length=20, blank=True)
+    semester = models.CharField(max_length=20, choices=SEMESTER_CHOICES, blank=True)
+    course = models.ForeignKey(CourseList, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.subjectcode} - {self.subjectname}"
+    
 
 class Subject(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
@@ -21,7 +63,7 @@ class Subject(models.Model):
         return f"{self.subjectcode} - {self.subjectname}"
     
 class Instructor(models.Model):
-    college = models.CharField(max_length=100, blank=True)
+    college = models.ForeignKey(College, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, blank=True)
     
     def __str__(self):
@@ -50,26 +92,39 @@ def create_first_section_for_course(sender, instance, created, **kwargs):
             section = Section(course=instance, year=year, sectionnumber=1)
             section.save()
 
+class Buildinglist(models.Model):
+    name = models.CharField(max_length=100,null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+    
+class Roomlist(models.Model):
+    building = models.ForeignKey(Buildinglist, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=100,null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
 class Room(models.Model):
     roomname = models.CharField(max_length=100, blank=True)
     building_number = models.CharField(max_length=20, blank=True)
     roomtype = models.CharField(max_length=100, blank=True)  # New field for roomtype
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
+    college = models.ForeignKey(College, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
-        return f"{self.course.abbreviation} : {self.building_number} - {self.roomname} ( {self.roomtype} )"
+        return f"{self.college} : {self.building_number} - {self.roomname} ( {self.roomtype} )"
 
 class TimeSlot(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
+    college = models.ForeignKey(College, on_delete=models.CASCADE,null=True)
     timeslottype = models.CharField(max_length=50)
     starttime = models.TimeField()
     endtime = models.TimeField()
 
     def __str__(self):
-        return f"{self.course.abbreviation} - {self.timeslottype} - {self.starttime} to {self.endtime}"
+        return f"{self.college} - {self.timeslottype} - {self.starttime} to {self.endtime}"
 
 class RoomSlot(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    college = models.ForeignKey(College, on_delete=models.CASCADE,null=True)
     roomslottype = models.CharField(max_length=50)
     building_number = models.CharField(max_length=20)
     roomname = models.CharField(max_length=100)
@@ -90,14 +145,14 @@ def create_room_slots_for_timeslot(sender, instance, **kwargs):
     # Days of the week to create room slots
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-    for course in [instance.course]:
+    for college in [instance.college]:
         roomtypes = [timeslottype]
 
         for roomtype in roomtypes:
-            for time_slot in TimeSlot.objects.filter(course=course, timeslottype=timeslottype):
+            for time_slot in TimeSlot.objects.filter(college=college, timeslottype=timeslottype):
                 for day in days:
                     room_slots_exist = RoomSlot.objects.filter(
-                        course=course,
+                        college=college,
                         roomslottype=roomtype,
                         day=day,
                         starttime=time_slot.starttime,
@@ -105,16 +160,16 @@ def create_room_slots_for_timeslot(sender, instance, **kwargs):
                     ).exists()
 
                     if not room_slots_exist:
-                        room_slots_with_same_course_and_type = RoomSlot.objects.filter(course=course, roomslottype=roomtype)
+                        room_slots_with_same_course_and_type = RoomSlot.objects.filter(college=college, roomslottype=roomtype)
                         roomslotnumber = room_slots_with_same_course_and_type.count() + 1
 
-                        rooms_matching = Room.objects.filter(course=course, roomtype=roomtype)
+                        rooms_matching = Room.objects.filter(college=college, roomtype=roomtype)
                         for room in rooms_matching:
                             building_number = room.building_number
                             roomname = room.roomname
 
                             RoomSlot.objects.create(
-                                course=course,
+                                college=college,
                                 roomslottype=roomtype,
                                 building_number=building_number,
                                 roomname=roomname,
@@ -131,12 +186,12 @@ def create_room_slots_for_timeslot(sender, instance, **kwargs):
 def create_room_slots_for_room(sender, instance, created, **kwargs):
     print("Creating room slots for room...")
     if created:
-        # Get the course and roomtype of the saved Room instance
-        course = instance.course
+        # Get the college and roomtype of the saved Room instance
+        college = instance.college
         roomtype = instance.roomtype
 
         # Get all timeslots associated with the course and roomtype of the new room
-        timeslots = TimeSlot.objects.filter(course=course, timeslottype=roomtype)
+        timeslots = TimeSlot.objects.filter(college=college, timeslottype=roomtype)
 
         # Days of the week to create room slots
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -145,7 +200,7 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
             for day in days:
                 # Check if a room slot with the same attributes already exists
                 room_slot_exists = RoomSlot.objects.filter(
-                    course=course,
+                    college=college,
                     roomslottype=roomtype,
                     building_number=instance.building_number,
                     roomname=instance.roomname,
@@ -157,7 +212,7 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
                 if not room_slot_exists:
                     # Get the latest roomslotnumber for the given course and roomtype
                     room_slots_with_same_course_and_type = RoomSlot.objects.filter(
-                        course=course,
+                        college=college,
                         roomslottype=roomtype,
                     ).order_by('-roomslotnumber')
 
@@ -168,7 +223,7 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
 
                     # Create the room slot
                     RoomSlot.objects.create(
-                        course=course,
+                        college=college,
                         roomslottype=roomtype,
                         building_number=instance.building_number,
                         roomname=instance.roomname,
@@ -185,13 +240,13 @@ def delete_related_room_slots(sender, instance, **kwargs):
     print("deleting room slots for room...")
     # Delete all related RoomSlot instances when a Room is deleted
     RoomSlot.objects.filter(
-        course=instance.course,
+        college=instance.college,
         roomslottype=instance.roomtype,
         building_number=instance.building_number,
         roomname=instance.roomname,
     ).delete()
 
-    remaining_room_slots = RoomSlot.objects.filter(course=instance.course, roomslottype=instance.roomtype)
+    remaining_room_slots = RoomSlot.objects.filter(college=instance.college, roomslottype=instance.roomtype)
     for index, room_slot in enumerate(remaining_room_slots, start=1):
         room_slot.roomslotnumber = index
         room_slot.save()
@@ -201,13 +256,13 @@ def delete_related_room_slots(sender, instance, **kwargs):
     print("deleting room slots for timeslot...")
     # Delete all related RoomSlot instances when a TimeSlot is deleted
     RoomSlot.objects.filter(
-        course=instance.course,
+        college=instance.college,
         roomslottype=instance.timeslottype,
         starttime=instance.starttime,
         endtime=instance.endtime,
     ).delete()
 
-    remaining_room_slots = RoomSlot.objects.filter(course=instance.course, roomslottype=instance.timeslottype)
+    remaining_room_slots = RoomSlot.objects.filter(college=instance.college, roomslottype=instance.timeslottype)
     for index, room_slot in enumerate(remaining_room_slots, start=1):
         room_slot.roomslotnumber = index
         room_slot.save()
@@ -223,14 +278,14 @@ def update_related_room_slots_for_room(sender, instance, **kwargs):
 
         # Check for changes in relevant fields
         if (
-            old_instance.course != instance.course or
+            old_instance.college != instance.college or
             old_instance.roomtype != instance.roomtype or
             old_instance.building_number != instance.building_number or
             old_instance.roomname != instance.roomname
         ):
             # Find all related RoomSlot instances based on old values
             related_room_slots = RoomSlot.objects.filter(
-                course=old_instance.course,
+                college=old_instance.college,
                 roomslottype=old_instance.roomtype,
                 building_number=old_instance.building_number,
                 roomname=old_instance.roomname,
@@ -238,7 +293,7 @@ def update_related_room_slots_for_room(sender, instance, **kwargs):
 
             # Update the matched RoomSlot instances with the new values
             for room_slot in related_room_slots:
-                room_slot.course = instance.course
+                room_slot.college = instance.college
                 room_slot.roomslottype = instance.roomtype
                 room_slot.building_number = instance.building_number
                 room_slot.roomname = instance.roomname
@@ -246,7 +301,7 @@ def update_related_room_slots_for_room(sender, instance, **kwargs):
 
             # Delete non-matched RoomSlot instances
             non_matched_room_slots = RoomSlot.objects.filter(
-                course=old_instance.course,
+                college=old_instance.college,
                 roomslottype=old_instance.roomtype,
                 building_number=old_instance.building_number,
                 roomname=old_instance.roomname,
@@ -265,14 +320,14 @@ def update_related_room_slots_for_timeslot(sender, instance, **kwargs):
 
         # Check for changes in relevant fields
         if (
-            old_instance.course != instance.course or
+            old_instance.college != instance.college or
             old_instance.timeslottype != instance.timeslottype or
             old_instance.starttime != instance.starttime or
             old_instance.endtime != instance.endtime
         ):
             # Find all related RoomSlot instances based on old values
             related_room_slots = RoomSlot.objects.filter(
-                course=old_instance.course,
+                college=old_instance.college,
                 roomslottype=old_instance.timeslottype,
                 starttime=old_instance.starttime,
                 endtime=old_instance.endtime,
@@ -280,7 +335,7 @@ def update_related_room_slots_for_timeslot(sender, instance, **kwargs):
 
             # Update the matched RoomSlot instances with the new values
             for room_slot in related_room_slots:
-                room_slot.course = instance.course
+                room_slot.college = instance.college
                 room_slot.roomslottype = instance.timeslottype
                 room_slot.starttime = instance.starttime
                 room_slot.endtime = instance.endtime
@@ -288,7 +343,7 @@ def update_related_room_slots_for_timeslot(sender, instance, **kwargs):
 
             # Delete non-matched RoomSlot instances
             non_matched_room_slots = RoomSlot.objects.filter(
-                course=old_instance.course,
+                college=old_instance.college,
                 roomslottype=old_instance.timeslottype,
                 starttime=old_instance.starttime,
                 endtime=old_instance.endtime,
@@ -296,6 +351,7 @@ def update_related_room_slots_for_timeslot(sender, instance, **kwargs):
             non_matched_room_slots.delete()
 
 class Schedule(models.Model):
+    college = models.ForeignKey(College, on_delete=models.CASCADE,null=True, blank=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     section_year = models.CharField(max_length=20, null=True, blank=True)  # Field to store year for section
     section_number = models.CharField(max_length=20, null=True, blank=True)  # Field to store section number
@@ -348,10 +404,12 @@ def create_schedule(sender, instance, created, **kwargs):
         matching_subjects = Subject.objects.filter(course=course, year=year)
 
         if matching_sections.exists() and matching_subjects.exists():
+            course_college = course.college
             # Create a Schedule instance for each combination of section and subject
             for matching_section in matching_sections:
                 for matching_subject in matching_subjects:
                     Schedule.objects.get_or_create(
+                        college=course_college,
                         course=course,
                         section_year=matching_section.year,
                         section_number=matching_section.sectionnumber,
@@ -441,7 +499,7 @@ def update_room_slot_availability(sender, instance, **kwargs):
             RoomSlot.objects.filter(
                 roomslotnumber=old_instance.lecture_roomslotnumber,
                 roomslottype='Lecture',
-                course=instance.course
+                college=instance.college
             ).update(availability=True)
 
         if instance.lecture_roomslotnumber:
@@ -449,7 +507,7 @@ def update_room_slot_availability(sender, instance, **kwargs):
             RoomSlot.objects.filter(
                 roomslotnumber=instance.lecture_roomslotnumber,
                 roomslottype='Lecture',
-                course=instance.course
+                college=instance.college
             ).update(availability=False)
 
     # Check if lab_roomslotnumber has changed
@@ -459,7 +517,7 @@ def update_room_slot_availability(sender, instance, **kwargs):
             RoomSlot.objects.filter(
                 roomslotnumber=old_instance.lab_roomslotnumber,
                 roomslottype='Laboratory',
-                course=instance.course
+                college=instance.college
             ).update(availability=True)
 
         if instance.lab_roomslotnumber:
@@ -467,7 +525,7 @@ def update_room_slot_availability(sender, instance, **kwargs):
             RoomSlot.objects.filter(
                 roomslotnumber=instance.lab_roomslotnumber,
                 roomslottype='Laboratory',
-                course=instance.course
+                college=instance.college
             ).update(availability=False)
 
 @receiver(pre_delete, sender=Schedule)
@@ -478,14 +536,14 @@ def set_roomslot_availability_on_schedule_delete(sender, instance, **kwargs):
         RoomSlot.objects.filter(
             roomslotnumber=instance.lecture_roomslotnumber,
             roomslottype='Lecture',
-            course=instance.course
+            college=instance.college
         ).update(availability=True)
 
     if instance.lab_roomslotnumber:
         RoomSlot.objects.filter(
             roomslotnumber=instance.lab_roomslotnumber,
             roomslottype='Laboratory',
-            course=instance.course
+            college=instance.college
         ).update(availability=True)
 
 
@@ -511,7 +569,7 @@ def update_schedule_on_roomslot_update(sender, instance, **kwargs):
                 if old_instance.roomslottype == 'Lecture':
                     schedule = Schedule.objects.get(
                         lecture_roomslotnumber=old_instance.roomslotnumber,
-                        course=instance.course,
+                        college=instance.college,
                     )
                     
                     # Update the Lecture fields in Schedule
@@ -524,7 +582,7 @@ def update_schedule_on_roomslot_update(sender, instance, **kwargs):
                 elif old_instance.roomslottype == 'Laboratory':
                     schedule = Schedule.objects.get(
                         lab_roomslotnumber=old_instance.roomslotnumber,
-                        course=instance.course,
+                        college=instance.college,
                     )
                     
                     # Update the Laboratory fields in Schedule

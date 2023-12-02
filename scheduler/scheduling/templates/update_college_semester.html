@@ -1,0 +1,14 @@
+<!-- update_college_semester_form.html -->
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <!-- Display the current semester -->
+    <label for="current_semester">Current Semester: {{ college.semester }}</label>
+
+    <!-- Input field for updating the semester -->
+    <label for="semester">New Semester:</label>
+    <input type="text" id="semester" name="semester" required>
+
+    <!-- Button to submit the form -->
+    <button type="submit">Update Semester</button>
+</form>

@@ -17,6 +17,7 @@ class UserListView(View):
                 "profile_pic": user.profile_pic.url if user.profile_pic else None,
                 "isAdmin": user.isAdmin,
                 "college": user.college,
+                "is_active": user.is_active
             }
             for user in users
         ]
@@ -38,3 +39,4 @@ def update_profile(request, username):
 
 def profile_updated(request):
     return render(request, 'profile_updated.html')
+
