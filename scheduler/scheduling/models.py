@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django.db.models.signals import post_save, pre_delete, pre_save
 from django.dispatch import receiver
+from django.db.models import Q
 
 # Create your models here.
 class CollegeList(models.Model):
@@ -137,54 +138,101 @@ class RoomSlot(models.Model):
     def __str__(self):
         return f"{self.roomslotnumber}: {self.roomname} - {self.roomslottype} - {self.day} - {self.starttime} to {self.endtime}"
 
-@receiver(post_save, sender=TimeSlot)
-def create_room_slots_for_timeslot(sender, instance, **kwargs):
-    print("Creating room slots for timeslot...")
-    timeslottype = instance.timeslottype
+@receiver(post_save, sender=RoomSlot)
+def update_availability(sender, instance, created, **kwargs):
+    
+    # Disconnect the signal temporarily to avoid recursion
+    post_save.disconnect(update_availability, sender=RoomSlot)
 
-    # Days of the week to create room slots
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    if created:
+        print("Hakdog cteatee")
+        # Get other RoomSlots with the same building_number, roomname, and day
+        conflicting_slots = RoomSlot.objects.filter(
+            building_number=instance.building_number,
+            roomname=instance.roomname,
+            day=instance.day,
+        ).exclude(pk=instance.pk)
 
-    for college in [instance.college]:
-        roomtypes = [timeslottype]
+        # Check for time overlap and update the availability of conflicting slots
+        for conflicting_slot in conflicting_slots:
+            if (instance.starttime < conflicting_slot.endtime and
+                    instance.endtime > conflicting_slot.starttime):
+                conflicting_slot.availability = conflicting_slot.availability
+                conflicting_slot.save()
+                instance.availability = conflicting_slot.availability
+                instance.save()
+                
 
-        for roomtype in roomtypes:
-            for time_slot in TimeSlot.objects.filter(college=college, timeslottype=timeslottype):
-                for day in days:
-                    room_slots_exist = RoomSlot.objects.filter(
-                        college=college,
-                        roomslottype=roomtype,
-                        day=day,
-                        starttime=time_slot.starttime,
-                        endtime=time_slot.endtime
-                    ).exists()
+    elif instance.availability:
+        print("Hakdog kung avil")
+        # First loop: Find related conflicting slots
+        conflicting_slots = RoomSlot.objects.filter(
+            building_number=instance.building_number,
+            roomname=instance.roomname,
+            day=instance.day,
+            availability=False,  # Only consider conflicting slots with availability set to False
+        ).exclude(pk=instance.pk)
 
-                    if not room_slots_exist:
-                        room_slots_with_same_course_and_type = RoomSlot.objects.filter(college=college, roomslottype=roomtype)
-                        roomslotnumber = room_slots_with_same_course_and_type.count() + 1
+        # Check for time overlap and update the availability of conflicting slots
+        for conflicting_slot in conflicting_slots:
+            if instance.starttime < conflicting_slot.endtime and instance.endtime > conflicting_slot.starttime:
+                # Check if there are no other conflicting slots with availability=False
+                has_remaining_conflict = any(
+                    conflicting_slot2.availability == False and
+                    conflicting_slot.starttime < conflicting_slot2.endtime and
+                    conflicting_slot.endtime > conflicting_slot2.starttime
+                    for conflicting_slot2 in conflicting_slots.exclude(pk=conflicting_slot.pk)
+                )
 
-                        rooms_matching = Room.objects.filter(college=college, roomtype=roomtype)
-                        for room in rooms_matching:
-                            building_number = room.building_number
-                            roomname = room.roomname
+                # Set availability to True only if there are no remaining conflicts
+                if not has_remaining_conflict:
+                    conflicting_slot.availability = True
+                    conflicting_slot.save()
 
-                            RoomSlot.objects.create(
-                                college=college,
-                                roomslottype=roomtype,
-                                building_number=building_number,
-                                roomname=roomname,
-                                day=day,
-                                starttime=time_slot.starttime,
-                                endtime=time_slot.endtime,
-                                roomslotnumber=roomslotnumber,
-                                availability=True
-                            )
-                            roomslotnumber += 1
+        # Second loop: Check if any conflicting slots are still False, if found, set availability to False for the current instance
+        has_conflict = RoomSlot.objects.filter(
+            building_number=instance.building_number,
+            roomname=instance.roomname,
+            day=instance.day,
+            availability=False,
+        ).exclude(pk=instance.pk).exists()
+
+    else:
+        print("Hakdog dele")
+        # First loop: Find related conflicting slots
+        conflicting_slots = RoomSlot.objects.filter(
+            building_number=instance.building_number,
+            roomname=instance.roomname,
+            day=instance.day,
+        ).exclude(pk=instance.pk)
+
+        # Check for time overlap and update the availability
+        for conflicting_slot in conflicting_slots:
+            if (instance.starttime < conflicting_slot.endtime and
+                    instance.endtime > conflicting_slot.starttime):
+                conflicting_slot.availability = conflicting_slot.availability
+                conflicting_slot.save()
+
+        # Second loop: Check if any conflicting slots are still False, if found, set availability to False for the current instance
+        has_conflict = RoomSlot.objects.filter(
+            building_number=instance.building_number,
+            roomname=instance.roomname,
+            day=instance.day,
+            availability=False,
+        ).exclude(pk=instance.pk).exists()
+
+        if has_conflict:
+            instance.availability = False
+            instance.save()
 
 
+    # Reconnect the signal after the update
+    post_save.connect(update_availability, sender=RoomSlot)
+
+    
+# Trigger for Room creation
 @receiver(post_save, sender=Room)
 def create_room_slots_for_room(sender, instance, created, **kwargs):
-    print("Creating room slots for room...")
     if created:
         # Get the college and roomtype of the saved Room instance
         college = instance.college
@@ -198,18 +246,51 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
 
         for time_slot in timeslots:
             for day in days:
+                conflict_handled = False  # Flag to indicate if the conflict has been handled
                 # Check if a room slot with the same attributes already exists
-                room_slot_exists = RoomSlot.objects.filter(
-                    college=college,
+                existing_room_slot = RoomSlot.objects.filter(
                     roomslottype=roomtype,
                     building_number=instance.building_number,
                     roomname=instance.roomname,
                     day=day,
-                    starttime=time_slot.starttime,
-                    endtime=time_slot.endtime,
-                ).exists()
+                    starttime__lt=time_slot.endtime,  # Check for time overlap
+                    endtime__gt=time_slot.starttime,  # Check for time overlap
+                ).first()
 
-                if not room_slot_exists:
+                print(f"Day: {day}, StartTime: {time_slot.starttime}, EndTime: {time_slot.endtime}")
+                print(f"Existing Room Slot: {existing_room_slot}")
+
+                # If there is a conflict, set availability to True for the existing room slot
+                # and set availability to False for the newly created room slot
+                if existing_room_slot:
+                    print("Condition: Conflict exists. Availability set to True for existing room slot and False for new room slot")
+                    # Get the latest roomslotnumber for the given course and roomtype
+                    room_slots_with_same_course_and_type = RoomSlot.objects.filter(
+                        college=college,
+                        roomslottype=roomtype,
+                    ).order_by('-roomslotnumber')   
+                    if room_slots_with_same_course_and_type.exists():
+                        roomslotnumber = room_slots_with_same_course_and_type.first().roomslotnumber + 1
+                    else:
+                        roomslotnumber = 1  
+                    RoomSlot.objects.create(
+                        college=college,
+                        roomslottype=roomtype,
+                        building_number=instance.building_number,
+                        roomname=instance.roomname,
+                        day=day,
+                        starttime=time_slot.starttime,
+                        endtime=time_slot.endtime,
+                        roomslotnumber=roomslotnumber,
+                        availability=existing_room_slot.availability,
+                    )
+
+                    conflict_handled = True  # Set the flag to True
+                    break
+
+                # If there is no conflict and the flag is False, set availability to False for the newly created room slot
+                elif not conflict_handled:
+                    print("Condition: No conflict. Availability set to False for new room slot")
                     # Get the latest roomslotnumber for the given course and roomtype
                     room_slots_with_same_course_and_type = RoomSlot.objects.filter(
                         college=college,
@@ -221,7 +302,6 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
                     else:
                         roomslotnumber = 1
 
-                    # Create the room slot
                     RoomSlot.objects.create(
                         college=college,
                         roomslottype=roomtype,
@@ -235,17 +315,141 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
                     )
 
 
+# Trigger for TimeSlot creation
+@receiver(post_save, sender=TimeSlot)
+def create_room_slots_for_timeslot(sender, instance, **kwargs):
+    # Get college and timeslottype instance
+    college = instance.college
+    timeslottype = instance.timeslottype
+
+    # Get room lists with college and type parameter
+    rooms = Room.objects.filter(college=college, roomtype=timeslottype)
+
+    # Days of the week to create room slots
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+    for room in rooms:
+        for day in days:
+            conflict_handled = False  # Flag to indicate if the conflict has been handled
+            # Check if a room slot with the same attributes already exists
+            existing_room_slot = RoomSlot.objects.filter(
+                college=college,
+                roomslottype=timeslottype,
+                building_number=room.building_number,
+                roomname=room.roomname,
+                day=day,
+                starttime__lt=instance.endtime,  # Check for time overlap
+                endtime__gt=instance.starttime,  # Check for time overlap
+            ).first()
+
+            print(f"Day: {day}, StartTime: {instance.starttime}, EndTime: {instance.endtime}")
+            print(f"Existing Room Slot: {existing_room_slot}")
+
+            # If there is a conflict, set availability to True for the existing room slot
+            # and set availability to False for the newly created room slot
+            if existing_room_slot:
+                # Get the latest roomslotnumber for the given course and roomtype
+                room_slots_with_same_course_and_type = RoomSlot.objects.filter(
+                    college=college,
+                    roomslottype=timeslottype,
+                ).order_by('-roomslotnumber')
+
+                if room_slots_with_same_course_and_type.exists():
+                    roomslotnumber = room_slots_with_same_course_and_type.first().roomslotnumber + 1
+                else:
+                    roomslotnumber = 1
+
+                RoomSlot.objects.create(
+                    college=college,
+                    roomslottype=timeslottype,
+                    building_number=room.building_number,
+                    roomname=room.roomname,
+                    day=day,
+                    starttime=instance.starttime,
+                    endtime=instance.endtime,
+                    roomslotnumber=roomslotnumber,
+                    availability=existing_room_slot.availability,
+                )
+
+                conflict_handled = True  # Set the flag to True
+                break
+
+            # If there is no conflict, set availability to False for the newly created room slot
+            elif not conflict_handled:
+                # Get the latest roomslotnumber for the given course and roomtype
+                room_slots_with_same_course_and_type = RoomSlot.objects.filter(
+                    college=college,
+                    roomslottype=timeslottype,
+                ).order_by('-roomslotnumber')
+
+                if room_slots_with_same_course_and_type.exists():
+                    roomslotnumber = room_slots_with_same_course_and_type.first().roomslotnumber + 1
+                else:
+                    roomslotnumber = 1
+
+                RoomSlot.objects.create(
+                    college=college,
+                    roomslottype=timeslottype,
+                    building_number=room.building_number,
+                    roomname=room.roomname,
+                    day=day,
+                    starttime=instance.starttime,
+                    endtime=instance.endtime,
+                    roomslotnumber=roomslotnumber,
+                    availability=True,
+                )
+
+
+
 @receiver(pre_delete, sender=Room)
 def delete_related_room_slots(sender, instance, **kwargs):
     print("deleting room slots for room...")
-    # Delete all related RoomSlot instances when a Room is deleted
-    RoomSlot.objects.filter(
+    
+    # Get related RoomSlot instances with the same building_number and roomname
+    related_slots = RoomSlot.objects.filter(
         college=instance.college,
         roomslottype=instance.roomtype,
         building_number=instance.building_number,
         roomname=instance.roomname,
-    ).delete()
+    )
 
+    # Check for time overlap and update the availability of related slots
+    for related_slot in related_slots:
+        conflicting_slots = RoomSlot.objects.filter(
+            Q(building_number=related_slot.building_number) &
+            Q(roomname=related_slot.roomname) &
+            Q(day=related_slot.day) &
+            ~Q(pk=related_slot.pk)  # Exclude the current slot
+        )
+
+        # Check if roomslotnumber is used in the schedule
+        is_used_in_schedule = Schedule.objects.filter(
+            college=related_slot.college,
+            lecture_building_number=related_slot.building_number if instance.roomtype == 'Lecture' else None,
+            lab_building_number=related_slot.building_number if instance.roomtype == 'Laboratory' else None,
+            lecture_roomname=related_slot.roomname if instance.roomtype == 'Lecture' else None,
+            lab_roomname=related_slot.roomname if instance.roomtype == 'Laboratory' else None,
+            lecture_day=related_slot.day if instance.roomtype == 'Lecture' else None,
+            lab_day=related_slot.day if instance.roomtype == 'Laboratory' else None,
+            lecture_roomslotnumber=related_slot.roomslotnumber if instance.roomtype == 'Lecture' else None,
+            lab_roomslotnumber=related_slot.roomslotnumber if instance.roomtype == 'Laboratory' else None,
+        ).exists()
+
+        # Check for time overlap and update the availability
+        for conflicting_slot in conflicting_slots:
+            if (related_slot.starttime < conflicting_slot.endtime and
+                    related_slot.endtime > conflicting_slot.starttime):
+                if is_used_in_schedule:
+                    conflicting_slot.availability = False
+                else:
+                    conflicting_slot.availability = True
+
+                conflicting_slot.save()
+
+    # Delete all related RoomSlot instances when a Room is deleted
+    related_slots.delete()
+
+    # Update remaining RoomSlot instances
     remaining_room_slots = RoomSlot.objects.filter(college=instance.college, roomslottype=instance.roomtype)
     for index, room_slot in enumerate(remaining_room_slots, start=1):
         room_slot.roomslotnumber = index
@@ -254,18 +458,57 @@ def delete_related_room_slots(sender, instance, **kwargs):
 @receiver(pre_delete, sender=TimeSlot)
 def delete_related_room_slots(sender, instance, **kwargs):
     print("deleting room slots for timeslot...")
-    # Delete all related RoomSlot instances when a TimeSlot is deleted
-    RoomSlot.objects.filter(
+    
+    # Get related RoomSlot instances with the same college and timeslottype
+    related_slots = RoomSlot.objects.filter(
         college=instance.college,
         roomslottype=instance.timeslottype,
         starttime=instance.starttime,
         endtime=instance.endtime,
-    ).delete()
+    )
 
+    # Check for time overlap and update the availability of related slots
+    for related_slot in related_slots:
+        conflicting_slots = RoomSlot.objects.filter(
+            Q(building_number=related_slot.building_number) &
+            Q(roomname=related_slot.roomname) &
+            Q(day=related_slot.day) &
+            ~Q(pk=related_slot.pk)  # Exclude the current slot
+        )
+
+        # Check if roomslotnumber is used in the schedule
+        is_used_in_schedule = Schedule.objects.filter(
+            college=related_slot.college,
+            lecture_building_number=related_slot.building_number if instance.timeslottype == 'Lecture' else None,
+            lab_building_number=related_slot.building_number if instance.timeslottype == 'Laboratory' else None,
+            lecture_roomname=related_slot.roomname if instance.timeslottype == 'Lecture' else None,
+            lab_roomname=related_slot.roomname if instance.timeslottype == 'Laboratory' else None,
+            lecture_day=related_slot.day if instance.timeslottype == 'Lecture' else None,
+            lab_day=related_slot.day if instance.timeslottype == 'Laboratory' else None,
+            lecture_roomslotnumber=related_slot.roomslotnumber if instance.timeslottype == 'Lecture' else None,
+            lab_roomslotnumber=related_slot.roomslotnumber if instance.timeslottype == 'Laboratory' else None,
+        ).exists()
+
+        # Check for time overlap and update the availability
+        for conflicting_slot in conflicting_slots:
+            if (related_slot.starttime < conflicting_slot.endtime and
+                    related_slot.endtime > conflicting_slot.starttime):
+                if is_used_in_schedule:
+                    conflicting_slot.availability = True
+                else:
+                    conflicting_slot.availability = False
+
+                conflicting_slot.save()
+
+    # Delete all related RoomSlot instances when a TimeSlot is deleted
+    related_slots.delete()
+
+    # Update remaining RoomSlot instances
     remaining_room_slots = RoomSlot.objects.filter(college=instance.college, roomslottype=instance.timeslottype)
     for index, room_slot in enumerate(remaining_room_slots, start=1):
         room_slot.roomslotnumber = index
         room_slot.save()
+
 
 
 @receiver(pre_save, sender=Room)
