@@ -4,6 +4,8 @@ from .models import College, CollegeList, CourseList, Course, Room, Roomlist, Bu
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from .forms import ScheduleForm
+from django.db.models import Q
+from django.http import HttpResponse
 import random
 
 # Course views
@@ -585,4 +587,70 @@ def update_college_semester(request, college_id):
     else:
         return render(request, 'update_college_semester.html', {'college': college})
     
+
+def update_availability(request):
+    # #1 Get all existing RoomSlot instances
+    all_slots = RoomSlot.objects.all()
+
+    # Define a custom sorting key function
+    def custom_sort_key(slot):
+        # Sort by availability (False first)
+        return (slot.availability, slot.building_number, slot.roomname, slot.day, slot.starttime, slot.endtime)
+
+    # Sort all_slots using the custom_sort_key
+    sorted_slots = sorted(all_slots, key=custom_sort_key)
+
+    # Now, sorted_slots contains the sorted RoomSlot instances
+
+    # #2 Iterate over each RoomSlot instance (i)
+    for i in sorted_slots:
+        # #2.1 Check if the instance has been used in a schedule
+        print(f"RoomSlot: {i.roomslottype} - {i.building_number} - {i.roomname} - {i.day} - {i.roomslotnumber}")
+        # Update the query to use Q objects for more complex conditions
+        is_used_in_schedule = Schedule.objects.filter(
+            Q(college=i.college) &
+            (
+                (Q(lecture_building_number=i.building_number) & Q(lecture_roomname=i.roomname) & Q(lecture_day=i.day) & Q(lecture_roomslotnumber=i.roomslotnumber)) |
+                (Q(lab_building_number=i.building_number) & Q(lab_roomname=i.roomname) & Q(lab_day=i.day) & Q(lab_roomslotnumber=i.roomslotnumber))
+            )
+        ).exists()
+        print(f"is_used_in_schedule: {is_used_in_schedule}")
+
+        # If the instance is used in a schedule, set availability to False and continue to the next iteration
+        if is_used_in_schedule:
+            i.availability = False
+            i.save()
+            continue
+
+        # If the instance is not used in a schedule, set availability to True
+        i.availability = True
+
+        # #2.1 Exclude the current instance (i) from the comparison
+        conflicting_slots = all_slots.filter(
+            building_number=i.building_number,
+            roomname=i.roomname,
+            day=i.day,
+        ).exclude(pk=i.pk)
+
+        # #2.2 Check if there are any conflicting instances with time overlap
+        conflicting_instances = [
+            j for j in conflicting_slots
+            if i.starttime < j.endtime and i.endtime > j.starttime
+        ]
+
+        # #2.3 Check if there is any conflicting instance with availability=False
+        if conflicting_instances:
+            has_conflict_false = any(
+                not conflict.availability for conflict in conflicting_instances
+            )
+            # #2.4 Set availability based on conflicts
+            i.availability = not has_conflict_false
+        else:
+            # Preserve the existing availability if there are no conflicts
+            i.availability = i.availability
+
+        # Save the instance
+        i.save()
+
+        return HttpResponse("Availability updated successfully.")
 

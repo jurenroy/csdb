@@ -10,7 +10,7 @@ class CollegeList(models.Model):
 
     def __str__(self):
         return self.college
-    
+
 class CourseList(models.Model):
     coursename = models.CharField(max_length=100, null=True, blank=True)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
@@ -26,8 +26,8 @@ class College(models.Model):
 
     def __str__(self):
         return self.college
-    
-    
+
+
 class Course(models.Model):
     coursename = models.CharField(max_length=100, null=True, blank=True)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
@@ -36,7 +36,7 @@ class Course(models.Model):
     def __str__(self):
         return self.coursename
 
-    
+
 class SubjectList(models.Model):
     SEMESTER_CHOICES = [
         ('First Semester', 'First Semester'),
@@ -52,7 +52,7 @@ class SubjectList(models.Model):
 
     def __str__(self):
         return f"{self.subjectcode} - {self.subjectname}"
-    
+
 
 class Subject(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
@@ -62,14 +62,14 @@ class Subject(models.Model):
 
     def __str__(self):
         return f"{self.subjectcode} - {self.subjectname}"
-    
+
 class Instructor(models.Model):
     college = models.ForeignKey(College, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, blank=True)
-    
+
     def __str__(self):
         return f"{self.name}"
-    
+
 class Section(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     year = models.CharField(max_length=20)
@@ -98,7 +98,7 @@ class Buildinglist(models.Model):
 
     def __str__(self):
         return self.name
-    
+
 class Roomlist(models.Model):
     building = models.ForeignKey(Buildinglist, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100,null=True, blank=True)
@@ -132,7 +132,7 @@ class RoomSlot(models.Model):
     day = models.CharField(max_length=20)
     starttime = models.TimeField()
     endtime = models.TimeField()
-    roomslotnumber = models.PositiveIntegerField(blank=True) 
+    roomslotnumber = models.PositiveIntegerField(blank=True)
     availability = models.BooleanField(default=True)  # Add the availability field with a default value of True
 
     def __str__(self):
@@ -140,7 +140,7 @@ class RoomSlot(models.Model):
 
 @receiver(post_save, sender=RoomSlot)
 def update_availability(sender, instance, created, **kwargs):
-    
+
     # Disconnect the signal temporarily to avoid recursion
     post_save.disconnect(update_availability, sender=RoomSlot)
 
@@ -161,7 +161,7 @@ def update_availability(sender, instance, created, **kwargs):
                 conflicting_slot.save()
                 instance.availability = conflicting_slot.availability
                 instance.save()
-                
+
 
     elif instance.availability:
         print("Hakdog kung avil")
@@ -186,7 +186,7 @@ def update_availability(sender, instance, created, **kwargs):
 
                 # Set availability to True only if there are no remaining conflicts
                 if not has_remaining_conflict:
-                    conflicting_slot.availability = True
+                    conflicting_slot.availability = conflicting_slot.availability
                     conflicting_slot.save()
 
         # Second loop: Check if any conflicting slots are still False, if found, set availability to False for the current instance
@@ -210,7 +210,7 @@ def update_availability(sender, instance, created, **kwargs):
         for conflicting_slot in conflicting_slots:
             if (instance.starttime < conflicting_slot.endtime and
                     instance.endtime > conflicting_slot.starttime):
-                conflicting_slot.availability = conflicting_slot.availability
+                conflicting_slot.availability = instance.availability
                 conflicting_slot.save()
 
         # Second loop: Check if any conflicting slots are still False, if found, set availability to False for the current instance
@@ -222,14 +222,14 @@ def update_availability(sender, instance, created, **kwargs):
         ).exclude(pk=instance.pk).exists()
 
         if has_conflict:
-            instance.availability = False
+            instance.availability = instance.availability
             instance.save()
 
 
     # Reconnect the signal after the update
     post_save.connect(update_availability, sender=RoomSlot)
 
-    
+
 # Trigger for Room creation
 @receiver(post_save, sender=Room)
 def create_room_slots_for_room(sender, instance, created, **kwargs):
@@ -268,11 +268,11 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
                     room_slots_with_same_course_and_type = RoomSlot.objects.filter(
                         college=college,
                         roomslottype=roomtype,
-                    ).order_by('-roomslotnumber')   
+                    ).order_by('-roomslotnumber')
                     if room_slots_with_same_course_and_type.exists():
                         roomslotnumber = room_slots_with_same_course_and_type.first().roomslotnumber + 1
                     else:
-                        roomslotnumber = 1  
+                        roomslotnumber = 1
                     RoomSlot.objects.create(
                         college=college,
                         roomslottype=roomtype,
@@ -286,7 +286,6 @@ def create_room_slots_for_room(sender, instance, created, **kwargs):
                     )
 
                     conflict_handled = True  # Set the flag to True
-                    break
 
                 # If there is no conflict and the flag is False, set availability to False for the newly created room slot
                 elif not conflict_handled:
@@ -372,7 +371,6 @@ def create_room_slots_for_timeslot(sender, instance, **kwargs):
                 )
 
                 conflict_handled = True  # Set the flag to True
-                break
 
             # If there is no conflict, set availability to False for the newly created room slot
             elif not conflict_handled:
@@ -404,7 +402,7 @@ def create_room_slots_for_timeslot(sender, instance, **kwargs):
 @receiver(pre_delete, sender=Room)
 def delete_related_room_slots(sender, instance, **kwargs):
     print("deleting room slots for room...")
-    
+
     # Get related RoomSlot instances with the same building_number and roomname
     related_slots = RoomSlot.objects.filter(
         college=instance.college,
@@ -458,7 +456,7 @@ def delete_related_room_slots(sender, instance, **kwargs):
 @receiver(pre_delete, sender=TimeSlot)
 def delete_related_room_slots(sender, instance, **kwargs):
     print("deleting room slots for timeslot...")
-    
+
     # Get related RoomSlot instances with the same college and timeslottype
     related_slots = RoomSlot.objects.filter(
         college=instance.college,
@@ -601,7 +599,7 @@ class Schedule(models.Model):
     subject_code = models.CharField(max_length=20, null=True, blank=True)  # Field to store subject code
     subject_name = models.CharField(max_length=100, null=True, blank=True)  # Field to store subject name
     instructor = models.CharField(max_length=100, null=True, blank=True)
-    
+
     # Lecture Session
     lecture_roomslotnumber = models.CharField(max_length=20, null=True, blank=True)
     lecture_day = models.CharField(max_length=20, null=True, blank=True)
@@ -609,7 +607,7 @@ class Schedule(models.Model):
     lecture_endtime = models.CharField(max_length=50, null=True, blank=True)
     lecture_building_number = models.CharField(max_length=50, null=True, blank=True)
     lecture_roomname = models.CharField(max_length=50, null=True, blank=True)
-    
+
     # Laboratory Session
     lab_roomslotnumber = models.CharField(max_length=20, null=True, blank=True)
     lab_day = models.CharField(max_length=20, null=True, blank=True)
@@ -627,7 +625,7 @@ class Schedule(models.Model):
         elif self.section_year == "Fourth Year":
             year_value = 4
         return f"{self.course}{year_value}R{self.section_number} ({self.subject_code} - {self.subject_name})"
-    
+
 
 @receiver(post_save, sender=Subject)
 @receiver(post_save, sender=Section)
@@ -814,7 +812,7 @@ def update_schedule_on_roomslot_update(sender, instance, **kwargs):
                         lecture_roomslotnumber=old_instance.roomslotnumber,
                         college=instance.college,
                     )
-                    
+
                     # Update the Lecture fields in Schedule
                     schedule.lecture_roomslotnumber = instance.roomslotnumber
                     schedule.lecture_building_number = instance.building_number
@@ -827,7 +825,7 @@ def update_schedule_on_roomslot_update(sender, instance, **kwargs):
                         lab_roomslotnumber=old_instance.roomslotnumber,
                         college=instance.college,
                     )
-                    
+
                     # Update the Laboratory fields in Schedule
                     schedule.lab_roomslotnumber = instance.roomslotnumber
                     schedule.lab_building_number = instance.building_number
@@ -835,7 +833,7 @@ def update_schedule_on_roomslot_update(sender, instance, **kwargs):
                     schedule.lab_day = instance.day
                     schedule.lab_starttime = instance.starttime
                     schedule.lab_endtime = instance.endtime
-                
+
                 # Save the Schedule
                 schedule.save()
             except Schedule.DoesNotExist:
